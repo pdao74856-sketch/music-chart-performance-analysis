@@ -12,3 +12,11 @@ __pycache__/
 # Raw audio files (ignored due to size limits)
 data/raw/audio/*.wav
 data/raw/audio/*.mp3
+
+# Local data caches and large CSVs
+data/processed/*.csv
+data/raw/chart/*.csv
+data/sampling/*.csv
+
+# Serialized model binaries (large artifacts)
+models/*.pkl
