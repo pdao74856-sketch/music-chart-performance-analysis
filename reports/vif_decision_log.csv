@@ -1,0 +1,4 @@
+step,dropped_feature,cluster,vif_before_drop,max_vif_after_drop,reason
+1,repetition_ratio_std,"Cum 1 (repetition_ratio <-> lexical_diversity, r = -1.0000)",1000800000000000.0,16.4383,"Dong nhat so hoc: repetition_ratio = 1 - lexical_diversity. Loai repetition_ratio de giu lexical_diversity (chuan NLP Type-Token Ratio), tranh suy bien ma tran."
+2,unique_word_count_std,"Cum 2 (word_count <-> unique_word_count, r = 0.8576)",14.8224,6.4267,unique_word_count = lexical_diversity * word_count. Loai de giu bien goc word_count (do tong do dai bai hat). VIF cua word_count tu giam ve 3.40.
+3,spectral_bandwidth_std,"Cum 3 (spectral_bandwidth <-> spectral_centroid, r = 0.9089)",6.4267,3.3942,r = 0.9089. Loai spectral_bandwidth de giu spectral_centroid dai dien do sang am sac (Brightness). VIF cua spectral_centroid tu giam ve 1.37. Toan bo 15 bien con lai dat VIF < 3.40 (< 5.0).

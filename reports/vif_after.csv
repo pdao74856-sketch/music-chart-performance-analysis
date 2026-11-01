@@ -1,0 +1,16 @@
+feature,vif_final
+word_count_std,3.3942
+line_count_std,3.023
+Market_KR,1.6736
+tempo_stability_std,1.5426
+Market_VN,1.4711
+lexical_diversity_std,1.4706
+tempo_std,1.4574
+energy_std,1.4085
+spectral_centroid_std,1.3657
+punctuation_ratio_std,1.3391
+onset_rate_std,1.3218
+chorus_repetition_count_std,1.3015
+release_year_std,1.1728
+avg_word_length_std,1.1349
+loudness_proxy_std,1.0658

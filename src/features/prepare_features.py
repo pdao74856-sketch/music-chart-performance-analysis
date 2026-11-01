@@ -40,7 +40,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "artist_col": "artist",
     "year_col": "release_year",
     
-    # 7 Librosa DSP audio features
+    # FEATURE_SET_V1: 6 Librosa DSP audio features (spectral_bandwidth dropped via VIF)
     "audio_cols": [
         "tempo",
         "energy",
@@ -48,22 +48,19 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "tempo_stability",
         "onset_rate",
         "spectral_centroid",
-        "spectral_bandwidth",
     ],
     
-    # 8 NLP lyrics features
+    # FEATURE_SET_V1: 6 NLP lyrics features (repetition_ratio and unique_word_count dropped via VIF)
     "lyrics_cols": [
         "word_count",
-        "unique_word_count",
         "lexical_diversity",
-        "repetition_ratio",
         "avg_word_length",
         "line_count",
         "chorus_repetition_count",
         "punctuation_ratio",
     ],
     
-    # Interaction terms to create: default to all audio features
+    # Interaction terms: 6 audio features x non-base markets (VN, KR) = 12 terms
     "interaction_cols": [
         "tempo",
         "energy",
@@ -71,8 +68,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "tempo_stability",
         "onset_rate",
         "spectral_centroid",
-        "spectral_bandwidth",
     ],
+    
+    # 1% lower quantile winsorization threshold for release_year (computed on Train, default None -> auto-calculated)
+    "winsorize_year_q01": None,
     
     # Market levels & reference baseline
     "market_levels": ["US", "VN", "KR"],
@@ -158,8 +157,14 @@ def build_design_matrix(
     """
     continuous_cols = config["audio_cols"] + config["lyrics_cols"] + [config["year_col"]]
     
+    # Preprocessing: Apply winsorization to release_year if threshold is configured
+    df_transformed = df_raw.copy()
+    winsor_q01 = config.get("winsorize_year_q01")
+    if winsor_q01 is not None and config["year_col"] in df_transformed.columns:
+        df_transformed[config["year_col"]] = df_transformed[config["year_col"]].clip(lower=winsor_q01)
+        
     # 1. Transform continuous features
-    scaled_arr = scaler.transform(df_raw[continuous_cols])
+    scaled_arr = scaler.transform(df_transformed[continuous_cols])
     scaled_df = pd.DataFrame(
         scaled_arr,
         columns=[f"{c}_std" for c in continuous_cols],
@@ -314,9 +319,19 @@ def get_split(
     market_train = raw_train[cfg["market_col"]].copy()
     market_test = raw_test[cfg["market_col"]].copy()
     
-    # Step 5: Fit scaler ONLY on Train continuous features
+    # Step 5: Winsorize release_year on Train at 1% quantile and fit scaler strictly on Train
+    q01_year = cfg.get("winsorize_year_q01")
+    if q01_year is None:
+        q01_year = float(raw_train[cfg["year_col"]].quantile(0.01))
+    cfg["winsorize_year_q01"] = q01_year
+    meta["winsorize_year_q01"] = q01_year
+    meta["feature_set"] = "FEATURE_SET_V1"
+    
+    raw_train_scaler_input = raw_train.copy()
+    raw_train_scaler_input[cfg["year_col"]] = raw_train_scaler_input[cfg["year_col"]].clip(lower=q01_year)
+    
     scaler = StandardScaler()
-    scaler.fit(raw_train[continuous_cols])
+    scaler.fit(raw_train_scaler_input[continuous_cols])
     
     # Step 6: Build design matrices for Train and Test
     X_train, feature_names = build_design_matrix(raw_train, scaler, cfg)
@@ -626,10 +641,33 @@ def save_split_artifacts(
     scaler_path = output_dir / "scaler.pkl"
     joblib.dump(split.scaler, scaler_path)
     
+    # 4. feature_metadata.json
+    feature_metadata_path = output_dir / "feature_metadata.json"
+    feature_meta = {
+        "feature_set": "FEATURE_SET_V1",
+        "frozen_seed": split.meta["seed"],
+        "total_columns": len(split.feature_names),
+        "feature_names": split.feature_names,
+        "audio_cols": split.config["audio_cols"],
+        "lyrics_cols": split.config["lyrics_cols"],
+        "interaction_cols": split.config["interaction_cols"],
+        "year_col": split.config["year_col"],
+        "winsorize_year_q01": split.meta.get("winsorize_year_q01"),
+        "base_market": split.config["base_market"],
+        "market_levels": split.config["market_levels"],
+        "train_rows": len(split.X_train),
+        "test_rows": len(split.X_test),
+        "train_tracks": len(train_ids_sorted),
+        "test_tracks": len(test_ids_sorted),
+    }
+    with open(feature_metadata_path, "w", encoding="utf-8") as f:
+        json.dump(feature_meta, f, indent=2)
+        
     return {
         "test_track_ids": test_json_path,
         "train_track_ids": train_json_path,
         "scaler": scaler_path,
+        "feature_metadata": feature_metadata_path,
     }
 
 

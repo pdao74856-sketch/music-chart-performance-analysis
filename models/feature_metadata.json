@@ -1,0 +1,70 @@
+{
+  "feature_set": "FEATURE_SET_V1",
+  "frozen_seed": 43,
+  "total_columns": 27,
+  "feature_names": [
+    "tempo_std",
+    "energy_std",
+    "loudness_proxy_std",
+    "tempo_stability_std",
+    "onset_rate_std",
+    "spectral_centroid_std",
+    "word_count_std",
+    "lexical_diversity_std",
+    "avg_word_length_std",
+    "line_count_std",
+    "chorus_repetition_count_std",
+    "punctuation_ratio_std",
+    "release_year_std",
+    "Market_VN",
+    "Market_KR",
+    "tempo_std__x__VN",
+    "tempo_std__x__KR",
+    "energy_std__x__VN",
+    "energy_std__x__KR",
+    "loudness_proxy_std__x__VN",
+    "loudness_proxy_std__x__KR",
+    "tempo_stability_std__x__VN",
+    "tempo_stability_std__x__KR",
+    "onset_rate_std__x__VN",
+    "onset_rate_std__x__KR",
+    "spectral_centroid_std__x__VN",
+    "spectral_centroid_std__x__KR"
+  ],
+  "audio_cols": [
+    "tempo",
+    "energy",
+    "loudness_proxy",
+    "tempo_stability",
+    "onset_rate",
+    "spectral_centroid"
+  ],
+  "lyrics_cols": [
+    "word_count",
+    "lexical_diversity",
+    "avg_word_length",
+    "line_count",
+    "chorus_repetition_count",
+    "punctuation_ratio"
+  ],
+  "interaction_cols": [
+    "tempo",
+    "energy",
+    "loudness_proxy",
+    "tempo_stability",
+    "onset_rate",
+    "spectral_centroid"
+  ],
+  "year_col": "release_year",
+  "winsorize_year_q01": 1979.84,
+  "base_market": "US",
+  "market_levels": [
+    "US",
+    "VN",
+    "KR"
+  ],
+  "train_rows": 1685,
+  "test_rows": 410,
+  "train_tracks": 1527,
+  "test_tracks": 382
+}
