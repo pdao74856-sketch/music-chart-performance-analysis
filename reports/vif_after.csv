@@ -1,16 +1,25 @@
-feature,vif_final
-word_count_std,3.3942
-line_count_std,3.023
-Market_KR,1.6736
-tempo_stability_std,1.5426
-Market_VN,1.4711
-lexical_diversity_std,1.4706
-tempo_std,1.4574
-energy_std,1.4085
-spectral_centroid_std,1.3657
-punctuation_ratio_std,1.3391
-onset_rate_std,1.3218
-chorus_repetition_count_std,1.3015
-release_year_std,1.1728
-avg_word_length_std,1.1349
-loudness_proxy_std,1.0658
+feature,vif_final,category
+word_count_std,3.7637,Lyrics
+chroma_longest_pattern_duration_std,2.7717,Audio RQA
+line_count_std,2.7497,Lyrics
+mfcc_longest_pattern_duration_std,2.485,Audio RQA
+loudness_proxy_std,2.3818,Audio dBFS
+rms_variability_std,2.3155,Audio Energy
+tempo_std,2.2632,Audio Rhythm
+chroma_mean_pattern_duration_std,2.1743,Audio RQA
+chord_change_rate_std,2.096,Audio Harmony
+mfcc_mean_pattern_duration_std,1.8704,Audio RQA
+Market_KR,1.7693,Dummy
+repetition_ratio_std,1.767,Lyrics
+tempo_stability_std,1.5597,Audio Rhythm
+Market_VN,1.508,Dummy
+spectral_centroid_std,1.4615,Audio Timbre
+key_confidence_std,1.43,Audio Harmony
+onset_rate_std,1.4025,Audio Rhythm
+chroma_repetition_determinism_std,1.3834,Audio RQA
+mfcc_repetition_determinism_std,1.374,Audio RQA
+punctuation_ratio_std,1.368,Lyrics
+chorus_repetition_count_std,1.2991,Lyrics
+release_year_std,1.2271,Control
+avg_word_length_std,1.2137,Lyrics
+mode,1.2011,Audio Binary

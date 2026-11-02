@@ -40,34 +40,45 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "artist_col": "artist",
     "year_col": "release_year",
     
-    # FEATURE_SET_V1: 6 Librosa DSP audio features (spectral_bandwidth dropped via VIF)
+    # Raw audio_mode column in DB (mapped to unscaled binary 'mode': major=1.0, minor=0.0)
+    "audio_mode_col": "audio_mode",
+    
+    # 14 Continuous Librosa DSP audio features (energy and spectral_bandwidth dropped via VIF)
     "audio_cols": [
         "tempo",
-        "energy",
-        "loudness_proxy",
-        "tempo_stability",
         "onset_rate",
+        "tempo_stability",
+        "loudness_proxy",
+        "rms_variability",
         "spectral_centroid",
+        "chord_change_rate",
+        "key_confidence",
+        "chroma_repetition_determinism",
+        "chroma_mean_pattern_duration",
+        "chroma_longest_pattern_duration",
+        "mfcc_repetition_determinism",
+        "mfcc_mean_pattern_duration",
+        "mfcc_longest_pattern_duration",
     ],
     
-    # FEATURE_SET_V1: 6 NLP lyrics features (repetition_ratio and unique_word_count dropped via VIF)
+    # 6 NLP lyrics features (unique_word_count and lexical_diversity dropped via VIF)
     "lyrics_cols": [
         "word_count",
-        "lexical_diversity",
+        "repetition_ratio",
         "avg_word_length",
         "line_count",
         "chorus_repetition_count",
         "punctuation_ratio",
     ],
     
-    # Interaction terms: 6 audio features x non-base markets (VN, KR) = 12 terms
+    # 5 Data-Driven Interaction terms (Kruskal-Wallis p < 0.001): 2 Audio + 3 Lyrics
+    # Multiplied by 2 non-base market dummies (VN, KR) = 10 interaction terms
     "interaction_cols": [
-        "tempo",
-        "energy",
         "loudness_proxy",
-        "tempo_stability",
-        "onset_rate",
         "spectral_centroid",
+        "avg_word_length",
+        "word_count",
+        "repetition_ratio",
     ],
     
     # 1% lower quantile winsorization threshold for release_year (computed on Train, default None -> auto-calculated)
@@ -89,6 +100,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "rms_energy",
         "dynamic_range",
         "beat_interval_variability",
+        "energy",
+        "spectral_bandwidth",
+        "unique_word_count",
+        "lexical_diversity",
     ],
     
     # Data cleaning rules:
@@ -150,35 +165,50 @@ def build_design_matrix(
 ) -> Tuple[pd.DataFrame, List[str]]:
     """
     Transforms clean raw dataframe into standardized design matrix X:
-    1. Transform continuous features using pre-fitted scaler -> <feat>_std
-    2. Generate explicit Market dummies (Base = US -> Market_VN, Market_KR)
-    3. Generate interaction terms -> <feat>_std__x__VN, <feat>_std__x__KR
-    4. Enforce strict reproducible column ordering.
+    1. Preprocessing: log1p(word_count), winsorize release_year, encode mode binary.
+    2. Transform continuous features using pre-fitted scaler -> <feat>_std
+    3. Generate explicit Market dummies (Base = US -> Market_VN, Market_KR)
+    4. Generate interaction terms -> <feat>_std__x__VN, <feat>_std__x__KR
+    5. Enforce strict reproducible column ordering (34 columns for full OLS).
     """
     continuous_cols = config["audio_cols"] + config["lyrics_cols"] + [config["year_col"]]
+    df_proc = df_raw.copy()
     
-    # Preprocessing: Apply winsorization to release_year if threshold is configured
-    df_transformed = df_raw.copy()
+    # 1. log1p on word_count as specified in Master Plan
+    if "word_count" in df_proc.columns:
+        df_proc["word_count"] = np.log1p(df_proc["word_count"].astype(float))
+    
+    # 2. Winsorization for release_year
     winsor_q01 = config.get("winsorize_year_q01")
-    if winsor_q01 is not None and config["year_col"] in df_transformed.columns:
-        df_transformed[config["year_col"]] = df_transformed[config["year_col"]].clip(lower=winsor_q01)
+    if winsor_q01 is not None and config["year_col"] in df_proc.columns:
+        df_proc[config["year_col"]] = df_proc[config["year_col"]].clip(lower=winsor_q01)
         
-    # 1. Transform continuous features
-    scaled_arr = scaler.transform(df_transformed[continuous_cols])
+    # 3. Transform continuous features using pre-fitted scaler
+    scaled_arr = scaler.transform(df_proc[continuous_cols])
     scaled_df = pd.DataFrame(
         scaled_arr,
         columns=[f"{c}_std" for c in continuous_cols],
         index=df_raw.index,
     )
     
-    # 2. Generate explicit Market dummies (no get_dummies auto-infer)
+    # 4. Binary mode feature (major=1.0, minor=0.0) - unscaled
+    mode_col = config.get("audio_mode_col", "audio_mode")
+    if mode_col in df_proc.columns:
+        mode_series = (df_proc[mode_col].astype(str).str.lower() == "major").astype(float)
+    elif "mode" in df_proc.columns:
+        mode_series = df_proc["mode"].astype(float)
+    else:
+        mode_series = pd.Series(0.0, index=df_proc.index)
+    mode_df = pd.DataFrame({"mode": mode_series}, index=df_raw.index)
+    
+    # 5. Generate explicit Market dummies (no get_dummies auto-infer)
     dummy_df = pd.DataFrame(index=df_raw.index)
     non_base_markets = [m for m in config["market_levels"] if m != config["base_market"]]
     for m in non_base_markets:
         dummy_col_name = f"Market_{m}"
         dummy_df[dummy_col_name] = (df_raw[config["market_col"]] == m).astype(float)
         
-    # 3. Generate interactions (<feat>_std * Market_<m>)
+    # 6. Generate interaction terms (<feat>_std * Market_<m>)
     interaction_df = pd.DataFrame(index=df_raw.index)
     for feat in config["interaction_cols"]:
         feat_std = f"{feat}_std"
@@ -186,7 +216,7 @@ def build_design_matrix(
             inter_col_name = f"{feat_std}__x__{m}"
             interaction_df[inter_col_name] = scaled_df[feat_std] * dummy_df[f"Market_{m}"]
             
-    # 4. Strict column order: Audio_std -> Lyrics_std -> Year_std -> Dummies -> Interactions
+    # 7. Strict column order: Audio_std (14) -> Mode (1) -> Lyrics_std (6) -> Year_std (1) -> Dummies (2) -> Interactions (10)
     audio_std_cols = [f"{c}_std" for c in config["audio_cols"]]
     lyrics_std_cols = [f"{c}_std" for c in config["lyrics_cols"]]
     year_std_col = [f"{config['year_col']}_std"]
@@ -197,8 +227,8 @@ def build_design_matrix(
         for m in non_base_markets
     ]
     
-    ordered_cols = audio_std_cols + lyrics_std_cols + year_std_col + dummy_cols + inter_cols
-    X = pd.concat([scaled_df, dummy_df, interaction_df], axis=1)[ordered_cols]
+    ordered_cols = audio_std_cols + ["mode"] + lyrics_std_cols + year_std_col + dummy_cols + inter_cols
+    X = pd.concat([scaled_df, mode_df, dummy_df, interaction_df], axis=1)[ordered_cols]
     return X, ordered_cols
 
 
@@ -303,9 +333,11 @@ def get_split(
     train_idx, test_idx = next(gss.split(df_clean, groups=df_clean[cfg["id_col"]]))
     
     # Safe raw subsets: Strip all unneeded/leakage columns to avoid accidental usage
+    mode_col_name = cfg.get("audio_mode_col", "audio_mode")
     safe_raw_cols = [
         cfg["id_col"], cfg["market_col"], cfg["target_col"],
-        cfg["title_col"], cfg["artist_col"], cfg["year_col"]
+        cfg["title_col"], cfg["artist_col"], cfg["year_col"],
+        mode_col_name
     ] + cfg["audio_cols"] + cfg["lyrics_cols"]
     available_safe_cols = [c for c in safe_raw_cols if c in df_clean.columns]
     
@@ -319,17 +351,20 @@ def get_split(
     market_train = raw_train[cfg["market_col"]].copy()
     market_test = raw_test[cfg["market_col"]].copy()
     
-    # Step 5: Winsorize release_year on Train at 1% quantile and fit scaler strictly on Train
+    # Step 5: Winsorize release_year on Train at 1% quantile, log1p word_count, and fit scaler strictly on Train
     q01_year = cfg.get("winsorize_year_q01")
     if q01_year is None:
         q01_year = float(raw_train[cfg["year_col"]].quantile(0.01))
     cfg["winsorize_year_q01"] = q01_year
     meta["winsorize_year_q01"] = q01_year
-    meta["feature_set"] = "FEATURE_SET_V1"
+    meta["feature_set"] = "FEATURE_SET_V2_OLS"
     
     raw_train_scaler_input = raw_train.copy()
+    if "word_count" in raw_train_scaler_input.columns:
+        raw_train_scaler_input["word_count"] = np.log1p(raw_train_scaler_input["word_count"].astype(float))
     raw_train_scaler_input[cfg["year_col"]] = raw_train_scaler_input[cfg["year_col"]].clip(lower=q01_year)
     
+    continuous_cols = cfg["audio_cols"] + cfg["lyrics_cols"] + [cfg["year_col"]]
     scaler = StandardScaler()
     scaler.fit(raw_train_scaler_input[continuous_cols])
     
@@ -465,6 +500,12 @@ def run_validation_checks(
         test_vals = set(X_test[d].unique())
         if not train_vals.issubset({0.0, 1.0}) or not test_vals.issubset({0.0, 1.0}):
             raise AssertionError(f"[FAIL Check 6] Dummy column '{d}' contains non-binary values!")
+            
+    if "mode" in X_train.columns:
+        train_mode_vals = set(X_train["mode"].unique())
+        test_mode_vals = set(X_test["mode"].unique())
+        if not train_mode_vals.issubset({0.0, 1.0}) or not test_mode_vals.issubset({0.0, 1.0}):
+            raise AssertionError("[FAIL Check 6] Binary column 'mode' contains non-binary values!")
             
     us_mask_train = (market_train == config["base_market"]).values
     if np.any(us_mask_train):
@@ -641,14 +682,36 @@ def save_split_artifacts(
     scaler_path = output_dir / "scaler.pkl"
     joblib.dump(split.scaler, scaler_path)
     
-    # 4. feature_metadata.json
+    # 4. model_metadata.json (and feature_metadata.json for backwards compatibility)
+    raw_train_df = split.raw_train
+    numeric_cols_for_medians = split.config["audio_cols"] + split.config["lyrics_cols"] + [split.config["year_col"]]
+    train_medians = {}
+    train_pct_01 = {}
+    train_pct_99 = {}
+    for col in numeric_cols_for_medians:
+        if col in raw_train_df.columns:
+            s = raw_train_df[col].dropna()
+            train_medians[col] = float(s.median())
+            train_pct_01[col] = float(s.quantile(0.01))
+            train_pct_99[col] = float(s.quantile(0.99))
+            
+    mode_col = split.config.get("audio_mode_col", "audio_mode")
+    if mode_col in raw_train_df.columns:
+        mode_s = (raw_train_df[mode_col].astype(str).str.lower() == "major").astype(float)
+        train_medians["mode"] = float(mode_s.median())
+    elif "mode" in raw_train_df.columns:
+        train_medians["mode"] = float(raw_train_df["mode"].median())
+        
+    model_metadata_path = output_dir / "model_metadata.json"
     feature_metadata_path = output_dir / "feature_metadata.json"
-    feature_meta = {
-        "feature_set": "FEATURE_SET_V1",
+    
+    meta_payload = {
+        "feature_set": "FEATURE_SET_V2_OLS",
         "frozen_seed": split.meta["seed"],
         "total_columns": len(split.feature_names),
-        "feature_names": split.feature_names,
-        "audio_cols": split.config["audio_cols"],
+        "ordered_cols": split.feature_names,
+        "audio_cols_continuous": split.config["audio_cols"],
+        "audio_mode_col": "mode",
         "lyrics_cols": split.config["lyrics_cols"],
         "interaction_cols": split.config["interaction_cols"],
         "year_col": split.config["year_col"],
@@ -659,14 +722,26 @@ def save_split_artifacts(
         "test_rows": len(split.X_test),
         "train_tracks": len(train_ids_sorted),
         "test_tracks": len(test_ids_sorted),
+        "train_medians": train_medians,
+        "train_percentiles_01": train_pct_01,
+        "train_percentiles_99": train_pct_99,
+        "model_architecture": {
+            "model_1_audio": [f"{c}_std" for c in split.config["audio_cols"]] + ["mode"],
+            "model_2_audio_lyrics": [f"{c}_std" for c in split.config["audio_cols"]] + ["mode"] + [f"{c}_std" for c in split.config["lyrics_cols"]],
+            "model_2b_context": [f"{c}_std" for c in split.config["audio_cols"]] + ["mode"] + [f"{c}_std" for c in split.config["lyrics_cols"]] + [f"{split.config['year_col']}_std", "Market_VN", "Market_KR"],
+            "model_3_full": split.feature_names,
+        }
     }
+    with open(model_metadata_path, "w", encoding="utf-8") as f:
+        json.dump(meta_payload, f, indent=2)
     with open(feature_metadata_path, "w", encoding="utf-8") as f:
-        json.dump(feature_meta, f, indent=2)
+        json.dump(meta_payload, f, indent=2)
         
     return {
         "test_track_ids": test_json_path,
         "train_track_ids": train_json_path,
         "scaler": scaler_path,
+        "model_metadata": model_metadata_path,
         "feature_metadata": feature_metadata_path,
     }
 
