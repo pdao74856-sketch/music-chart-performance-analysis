@@ -1,6 +1,7 @@
 {
   "feature_set": "FEATURE_SET_V2_OLS",
   "frozen_seed": 43,
+  "prepare_features_sha256": "49c657b28673e26f28dc6dbd9407041015a9fce7f3b65bc8b7462736bc499b1f",
   "total_columns": 34,
   "ordered_cols": [
     "tempo_std",

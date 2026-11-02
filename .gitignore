@@ -20,3 +20,5 @@ data/sampling/*.csv
 
 # Serialized model binaries (large artifacts)
 models/*.pkl
+!models/scaler.pkl
+!models/mlr_pipeline.pkl
