@@ -595,6 +595,13 @@ def run_validation_checks(
     # - Tier 2: Contender [30.0, 70.0) (Average rank 31 to 71)
     # - Tier 3: Upper Top 100 [0.0, 30.0) (Average rank 71 to 101)
     # - Tier 4: Negative Score (< 0.0) (Average rank 102 to 200)
+    EXPECTED_TIERS = [
+        "Tier 1: Top ~30 (>=70)",
+        "Tier 2: Contender [30, 70)",
+        "Tier 3: Upper Top 100 [0, 30)",
+        "Tier 4: Negative Score (<0)",
+    ]
+
     def assign_tier(score):
         if score >= 70.0: return "Tier 1: Top ~30 (>=70)"
         if score >= 30.0: return "Tier 2: Contender [30, 70)"
@@ -602,12 +609,12 @@ def run_validation_checks(
         return "Tier 4: Negative Score (<0)"
     
     test_tiers = pd.DataFrame({"market": market_test, "score": y_test})
-    test_tiers["tier"] = test_tiers["score"].apply(assign_tier)
-    tier_counts = test_tiers.groupby(["market", "tier"]).size().unstack(fill_value=0)
-    has_full_coverage = (tier_counts > 0).all().all()
+    test_tiers["tier"] = pd.Categorical(test_tiers["score"].apply(assign_tier), categories=EXPECTED_TIERS)
+    tier_counts = test_tiers.groupby(["market", "tier"], observed=False).size().unstack(fill_value=0)
+    has_full_coverage = bool((tier_counts[EXPECTED_TIERS] > 0).all().all())
     report["soft_checks"]["check_12_tab1_coverage"] = {
-        "tier_table": tier_counts.to_dict(),
-        "full_coverage": bool(has_full_coverage),
+        "tier_table": tier_counts[EXPECTED_TIERS].to_dict(),
+        "full_coverage": has_full_coverage,
         "status": "OK" if has_full_coverage else "WARNING",
     }
     
