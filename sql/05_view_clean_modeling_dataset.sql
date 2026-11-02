@@ -16,8 +16,7 @@
 --     4. 6 NLP Lyrics Features (perfect multicollinearity eliminated)
 --   Excluded:
 --     - Leakage columns (lifetime_average_rank, peak_rank, weeks_on_chart, streams)
---     - Redundant r=1.0 pairs (tempo_bpm, rms_energy, dynamic_range, beat_interval_variability)
---     - Degenerate collinear features (unique_word_count, lexical_diversity)
+--     - Redundant r=1.0 pairs (beat_interval_variability, unique_word_count, lexical_diversity)
 -- ============================================================================
 
 BEGIN;
@@ -38,10 +37,10 @@ SELECT
 
     -- 3. 17 Audio Features Librosa (Đã chuẩn hóa công thức toán học)
     -- Nhóm Nhịp điệu & Động năng (5 biến)
-    COALESCE(tempo, tempo_bpm) AS tempo,
+    tempo_bpm AS tempo,
     onset_rate,
     tempo_stability,
-    COALESCE(energy, rms_energy) AS energy,
+    rms_energy AS energy,
     loudness_proxy,
     rms_variability,
 
@@ -53,7 +52,6 @@ SELECT
     chord_change_rate,
     key_confidence,
     CASE 
-        WHEN mode::text IN ('1', 'major', 'Major') THEN 1
         WHEN audio_mode::text IN ('1', 'major', 'Major') THEN 1
         ELSE 0
     END AS mode,
