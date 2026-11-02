@@ -191,14 +191,30 @@ def build_design_matrix(
         index=df_raw.index,
     )
     
-    # 4. Binary mode feature (major=1.0, minor=0.0) - unscaled
+    # 4. Binary mode feature (major=1.0, minor=0.0) - unscaled with strict validation
     mode_col = config.get("audio_mode_col", "audio_mode")
     if mode_col in df_proc.columns:
-        mode_series = (df_proc[mode_col].astype(str).str.lower() == "major").astype(float)
+        if df_proc[mode_col].isnull().any():
+            raise ValueError(f"[CRITICAL] Null values detected in '{mode_col}' column during design matrix construction!")
+        mode_str = df_proc[mode_col].astype(str).str.lower().str.strip()
+        is_major = (mode_str == "major") | (mode_str == "1") | (mode_str == "1.0")
+        is_minor = (mode_str == "minor") | (mode_str == "0") | (mode_str == "0.0")
+        if not (is_major | is_minor).all():
+            invalid_vals = mode_str[~(is_major | is_minor)].unique().tolist()
+            raise ValueError(f"[CRITICAL] Unrecognized values in '{mode_col}': {invalid_vals}. Expected 'major'/'minor' or 1/0.")
+        mode_series = is_major.astype(float)
     elif "mode" in df_proc.columns:
+        if df_proc["mode"].isnull().any():
+            raise ValueError("[CRITICAL] Null values detected in 'mode' column during design matrix construction!")
+        mode_val_set = set(df_proc["mode"].unique())
+        if not mode_val_set.issubset({0.0, 1.0, 0, 1}):
+            raise ValueError(f"[CRITICAL] 'mode' column contains non-binary values: {mode_val_set}")
         mode_series = df_proc["mode"].astype(float)
     else:
-        mode_series = pd.Series(0.0, index=df_proc.index)
+        raise KeyError(
+            f"[CRITICAL] Neither configured audio mode column '{mode_col}' nor 'mode' found in input DataFrame! "
+            f"Available columns: {list(df_proc.columns)}"
+        )
     mode_df = pd.DataFrame({"mode": mode_series}, index=df_raw.index)
     
     # 5. Generate explicit Market dummies (no get_dummies auto-infer)
@@ -313,9 +329,10 @@ def get_split(
         if col in df_clean.columns:
             df_clean[col] = df_clean[col].fillna(fill_val)
             
-    # Verify no nulls remaining in active features, id, market, target
+    # Verify no nulls remaining in active features, id, market, target, audio_mode
+    mode_col_name = cfg.get("audio_mode_col", "audio_mode")
     continuous_cols = cfg["audio_cols"] + cfg["lyrics_cols"] + [cfg["year_col"]]
-    required_cols = [cfg["id_col"], cfg["market_col"], cfg["target_col"]] + continuous_cols
+    required_cols = [cfg["id_col"], cfg["market_col"], cfg["target_col"], mode_col_name] + continuous_cols
     remaining_nulls = df_clean[required_cols].isnull().sum()
     if remaining_nulls.any():
         null_details = remaining_nulls[remaining_nulls > 0].to_dict()
@@ -725,6 +742,7 @@ def save_split_artifacts(
         "train_medians": train_medians,
         "train_percentiles_01": train_pct_01,
         "train_percentiles_99": train_pct_99,
+        "units_note": "CRITICAL FOR TAB 2/3: All train_medians and train_percentiles are reported in RAW units (word_count is raw integer count, release_year is raw year). The build_design_matrix() pipeline automatically applies log1p(word_count) and winsorizes release_year before scaling.",
         "model_architecture": {
             "model_1_audio": [f"{c}_std" for c in split.config["audio_cols"]] + ["mode"],
             "model_2_audio_lyrics": [f"{c}_std" for c in split.config["audio_cols"]] + ["mode"] + [f"{c}_std" for c in split.config["lyrics_cols"]],

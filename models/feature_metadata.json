@@ -152,6 +152,7 @@
     "punctuation_ratio": 0.11871259850212613,
     "release_year": 2026.0
   },
+  "units_note": "CRITICAL FOR TAB 2/3: All train_medians and train_percentiles are reported in RAW units (word_count is raw integer count, release_year is raw year). The build_design_matrix() pipeline automatically applies log1p(word_count) and winsorizes release_year before scaling.",
   "model_architecture": {
     "model_1_audio": [
       "tempo_std",
