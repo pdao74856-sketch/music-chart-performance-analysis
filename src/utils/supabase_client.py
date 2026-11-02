@@ -6,7 +6,7 @@ Owner: Member 4 (Data Pipeline, Supabase, Benchmark & Deploy Lead)
 
 Responsibilities:
   - Manages Supabase client authentication (via .env locally or st.secrets on Cloud).
-  - Fetches cleaned data from `view_clean_modeling_dataset` or `modeling_dataset`.
+  - Fetches cleaned data from `view_clean_modeling_dataset` (2,098 rows) with automatic pagination.
   - Provides robust offline fallback to local CSV when network or credentials are unavailable.
 """
 
@@ -60,7 +60,8 @@ def load_clean_modeling_data(
     limit: Optional[int] = None
 ) -> pd.DataFrame:
     """
-    Loads the clean modeling dataset.
+    Loads the clean modeling dataset (2,098 rows from view_clean_modeling_dataset).
+    Includes automatic pagination (.range) to bypass the PostgREST 1,000-row limit.
 
     Parameters:
     -----------
@@ -86,22 +87,41 @@ def load_clean_modeling_data(
                 print(f"[SupabaseClient] Connecting to {url[:25]}...")
                 client = get_supabase_client()
                 
-                # Try query from view_clean_modeling_dataset
                 col_str = ",".join(select) if select else "*"
-                query = client.table("view_clean_modeling_dataset").select(col_str)
-                if limit:
-                    query = query.limit(limit)
+                all_records = []
+                batch_size = 1000
+                start_idx = 0
                 
-                response = query.execute()
-                if response.data and len(response.data) > 0:
-                    df = pd.DataFrame(response.data)
-                    print(f"[SupabaseClient] Successfully fetched {len(df):,} rows from view_clean_modeling_dataset.")
+                while True:
+                    end_idx = start_idx + batch_size - 1
+                    if limit and (start_idx + batch_size) > limit:
+                        end_idx = limit - 1
+                        
+                    res = (
+                        client.table("view_clean_modeling_dataset")
+                        .select(col_str)
+                        .range(start_idx, end_idx)
+                        .execute()
+                    )
+                    
+                    batch_data = res.data or []
+                    all_records.extend(batch_data)
+                    
+                    # If returned less than 1,000 rows or reached limit, all rows collected
+                    if len(batch_data) < batch_size or (limit and len(all_records) >= limit):
+                        break
+                        
+                    start_idx += batch_size
+                
+                if all_records:
+                    df = pd.DataFrame(all_records)
+                    print(f"[SupabaseClient] Successfully fetched all {len(df):,} clean rows from view_clean_modeling_dataset.")
             except Exception as e:
                 print(f"[SupabaseClient] Warning: Failed to query Supabase ({e}).")
                 if source == "supabase":
                     raise
 
-    # Fallback to local processed dataset
+    # Fallback to local processed dataset if offline or not configured
     if df is None:
         local_path = ROOT_DIR / "data" / "processed" / "modeling_dataset.csv"
         if not local_path.exists():
@@ -122,11 +142,9 @@ def load_clean_modeling_data(
         if "mode" not in df.columns and "audio_mode" in df.columns:
             df["mode"] = df["audio_mode"].apply(lambda x: 1 if str(x).lower() in ("1", "major") else 0)
 
-        # Standardize dBFS loudness_proxy if not already in dBFS
-        # 20 * log10(max(energy, 1e-10))
+        # Standardize dBFS loudness_proxy if not already in dBFS: 20 * log10(max(energy, 1e-10))
         if "energy" in df.columns:
             calculated_loudness = 20.0 * np.log10(np.maximum(df["energy"].values, 1e-10))
-            # If current loudness_proxy is outside [-30, 0] dB range, replace with dBFS formula
             if df["loudness_proxy"].mean() > 0 or df["loudness_proxy"].min() < -100:
                 df["loudness_proxy"] = calculated_loudness
 
