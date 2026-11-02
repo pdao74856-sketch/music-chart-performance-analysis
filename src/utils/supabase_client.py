@@ -24,8 +24,13 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT_DIR / ".env")
 
 
+# Default Supabase project endpoints for ADY201m
+DEFAULT_SUPABASE_URL = "https://onzqkpyadjmhhuvkxlhz.supabase.co"
+DEFAULT_SUPABASE_KEY = "sb_publishable_5RjA3_1UNYH_QBiStWYutw_RDORcLau"
+
+
 def get_supabase_credentials() -> tuple[Optional[str], Optional[str]]:
-    """Retrieves Supabase URL and Key from environment or Streamlit secrets."""
+    """Retrieves Supabase URL and Key from environment or Streamlit secrets with project defaults."""
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
 
@@ -38,6 +43,12 @@ def get_supabase_credentials() -> tuple[Optional[str], Optional[str]]:
                 key = st.secrets.get("SUPABASE_KEY", key)
         except Exception:
             pass
+
+    # Use project defaults if still not configured
+    if not url:
+        url = DEFAULT_SUPABASE_URL
+    if not key:
+        key = DEFAULT_SUPABASE_KEY
 
     return url, key
 
