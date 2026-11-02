@@ -16,6 +16,7 @@ Output file:
 
 import os
 from pathlib import Path
+import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 
@@ -102,18 +103,30 @@ def main():
 
     print(f"Merged master dataset: {len(master)} rows")
 
-    # Fetch youtube_mapping_id
+    # Fetch youtube_mapping_id (from Supabase, or fallback to existing master file if offline)
     yt_mappings = fetch_youtube_mappings()
     if yt_mappings:
         master["youtube_mapping_id"] = master["spotify_track_id"].map(yt_mappings)
+    elif OUTPUT_FILE.exists():
+        print("Using existing youtube_mapping_id from local master file as fallback...")
+        prev_df = pd.read_csv(OUTPUT_FILE, usecols=["spotify_track_id", "youtube_mapping_id"])
+        prev_mapping = dict(zip(prev_df["spotify_track_id"], prev_df["youtube_mapping_id"]))
+        master["youtube_mapping_id"] = master["spotify_track_id"].map(prev_mapping)
     else:
         master["youtube_mapping_id"] = None
 
-    # Populate legacy alias columns
+    # Populate legacy alias columns & standardized proxies (matching Supabase database schema v2)
     master["tempo"] = master["tempo_bpm"]
     master["energy"] = master["rms_energy"]
-    master["loudness_proxy"] = master["dynamic_range"]
-    master["tempo_stability"] = master["beat_interval_variability"]
+
+    # Standardized Audio-derived proxy features:
+    # 1. Loudness proxy: 20 * log10(RMS) in dBFS (range ~ [-25, -6] dBFS)
+    # Replaces old dynamic_range mapping to eliminate duplicate collinearity
+    master["loudness_proxy"] = 20 * np.log10(np.maximum(master["rms_energy"], 1e-10))
+
+    # 2. Tempo stability: normalized inverse of beat interval variability (range (0, 1])
+    # 1 / (1 + beat_interval_variability) -> approaches 1.0 for strict metronomic tempo
+    master["tempo_stability"] = 1.0 / (1.0 + master["beat_interval_variability"])
 
     # Status columns
     master["audio_status"] = "success"
@@ -165,6 +178,8 @@ def main():
     assert len(master) == 1912, f"Expected 1912 rows, got {len(master)}"
     assert master["spotify_track_id"].nunique() == 1912, "Duplicate IDs detected!"
     assert "self_similarity" not in master.columns, "self_similarity should be dropped!"
+    assert (master["loudness_proxy"] <= 0).all(), "loudness_proxy should be in dBFS (<= 0)!"
+    assert ((master["tempo_stability"] > 0) & (master["tempo_stability"] <= 1.0)).all(), "tempo_stability should be in (0, 1]!"
     
     # Save master file
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
