@@ -1,0 +1,5 @@
+market,total_chart_entries,unique_tracks,has_audio_count,has_both_count,avg_duration_sec,audio_extraction_rate
+KR,1020,1020,1020,1020,203.13236392334707,100.0
+US,955,955,955,955,202.75424819840677,100.0
+VN,885,885,885,885,216.39208650089034,100.0
+Overall,2860,1912,2860,2860,207.1092009736295,100.0

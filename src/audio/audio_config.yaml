@@ -1,0 +1,62 @@
+# Cấu hình chuẩn hóa trích xuất và phân tích đặc trưng âm học (Member 2)
+# Module: ADY201m - Music Chart Performance Analysis (2021–2026)
+
+audio_pipeline:
+  sample_rate: 44100
+  mono: true
+  analysis_window:
+    strategy: "full_track"
+    description: "Phân tích toàn bộ thời lượng bài hát (trung bình ~207 giây) để nắm bắt đầy đủ cấu trúc từ Intro, Verse, Chorus đến Outro"
+
+features:
+  rhythm:
+    hop_length: 512
+    tempo_range: [40, 260]
+    metrics:
+      - tempo_bpm
+      - beat_interval_variability
+      - tempo_stability
+      - onset_rate
+
+  energy:
+    frame_length: 2048
+    hop_length: 512
+    metrics:
+      - rms_energy
+      - rms_variability
+      - dynamic_range
+      - loudness_proxy
+
+  spectral:
+    n_fft: 2048
+    hop_length: 512
+    metrics:
+      - spectral_centroid
+      - spectral_bandwidth
+
+  tonal:
+    algorithm: "krumhansl_schmuckler"
+    chord_method: "beat_synchronous_triad_matching"
+    metrics:
+      - audio_key
+      - audio_mode
+      - key_confidence
+      - chord_change_rate
+
+  repetition_rqa:
+    embedding_dimension: 1
+    delay: 1
+    recurrence_threshold_percentile: 10
+    min_line_length: 2
+    metrics:
+      - chroma_repetition_determinism
+      - chroma_mean_pattern_duration
+      - chroma_longest_pattern_duration
+      - mfcc_repetition_determinism
+      - mfcc_mean_pattern_duration
+      - mfcc_longest_pattern_duration
+
+database:
+  supabase_table: "audio_features"
+  modeling_view: "modeling_dataset"
+  sampled_filter: "is_sampled = True"

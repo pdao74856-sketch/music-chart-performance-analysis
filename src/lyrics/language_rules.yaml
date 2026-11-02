@@ -1,0 +1,636 @@
+# Lyrics feature extraction rules
+# Project: music-chart-performance-analysis
+# Version: 1.1.0
+#
+# These rules are explicit conventions for this project, not a claim that
+# whitespace tokenization perfectly identifies linguistic words in every language.
+# Raw lyrics files must never be modified by the extraction pipeline.
+
+version: "1.1.0"
+
+input:
+  status_csv: "data/processed/lyrics_status.csv"
+  lyrics_directory: "data/raw/lyrics"
+  track_id_column: "spotify_track_id"
+  title_column: "title"
+  market_column: "market"
+  language_column: "language"
+  lyrics_status_column: "lyrics_status"
+  lyrics_file_column: "lyrics_file"
+  source_column: "source"
+  encoding: "utf-8-sig"
+  preserve_raw_files: true
+
+status:
+  # Collection status and feature extraction status should be logged separately.
+  lyrics_available:
+    - "success"
+  lyrics_unavailable:
+    - "not_found"
+  extraction_status:
+    success: "success"
+    empty_file: "empty_file"
+    missing_file: "missing_file"
+    invalid_track_id: "invalid_track_id"
+    unreadable_file: "read_error"
+    unsupported_or_unknown_language: "language_limited"
+    partial: "partial"
+    failed: "failed"
+    not_attempted: "not_attempted"
+
+normalization:
+  unicode_normalization: "NFC"
+  lowercase_for_comparison: true
+  strip_leading_trailing_whitespace: true
+  collapse_consecutive_whitespace: true
+  preserve_raw_lyrics: true
+  remove_section_labels_for_features: false
+  # Do not remove punctuation before punctuation_ratio is calculated.
+  punctuation:
+    unicode_categories:
+      - "Pc"
+      - "Pd"
+      - "Pe"
+      - "Pf"
+      - "Pi"
+      - "Po"
+      - "Ps"
+    count_unicode_punctuation_characters: true
+  token_normalization:
+    lowercase: true
+    unicode_normalization: "NFC"
+    trim_surrounding_punctuation: true
+    keep_internal_apostrophes: true
+    keep_internal_hyphens: true
+    ignore_tokens_without_letters_or_numbers: true
+
+tokenization:
+  # English: recognize Unicode letter/number sequences; allow internal apostrophes
+  # and hyphens. This is a practical lyric-text tokenizer, not a full NLP parser.
+  en:
+    method: "unicode_word_regex"
+    pattern: "[\\p{L}\\p{N}]+(?:['’\\-][\\p{L}\\p{N}]+)*"
+    notes:
+      - "Normalize tokens to lowercase (casefold) and Unicode NFC for counting."
+      - "Contractions such as don't or I'm and hyphenated compounds are retained as one token."
+      - "The exact same token list is used for word_count, unique_word_count, lexical_diversity, repetition_ratio, avg_word_length, and pronoun_ratio."
+
+  # Vietnamese: whitespace-delimited syllable-like tokens (tiếng) are used as a baseline.
+  # They must not be described as linguistically complete multi-syllable word segmentation.
+  vi:
+    method: "whitespace_delimited_unicode_tokens"
+    notes:
+      - "A whitespace-delimited unit in Vietnamese is a syllable (tiếng), not necessarily a complete compound word (từ ghép)."
+      - "Unicode NFC normalization preserves Vietnamese tone marks and vowel diacritics consistently."
+      - "lexical_diversity, repetition_ratio, and avg_word_length are syllable-token proxies and must not be compared naively with English/Korean."
+
+  # Korean: whitespace-delimited eojeol-like units are a baseline, not morpheme-level
+  # segmentation. No external morphological analyzer (e.g., Mecab/Kiwi) is assumed.
+  ko:
+    method: "whitespace_delimited_unicode_tokens"
+    notes:
+      - "A whitespace-delimited unit (eojeol) often combines a lexical stem with agglutinative particles or endings."
+      - "Do not claim whitespace tokenization is equivalent to Korean morphological analysis."
+      - "Because particles attach to stems, eojeol-based lexical_diversity and avg_word_length behave differently from English/Vietnamese."
+
+  # Mixed-language lyrics use a shared Unicode tokenizer for Latin, Hangul, digits,
+  # and internal apostrophes/hyphens. Language-specific pronoun matching is kept
+  # NULL because single-language pronoun dictionaries cannot be applied uniformly.
+  mixed:
+    method: "unicode_script_aware_word_regex"
+    pattern: "[\\p{L}\\p{N}]+(?:['’\\-][\\p{L}\\p{N}]+)*"
+    notes:
+      - "Keep Latin and Hangul/CJK tokens in the same normalized token sequence."
+      - "Do not assign every token to a single language solely by track label."
+      - "pronoun_ratio is null for mixed tracks to avoid cross-language false positives or false negatives."
+
+  # Spanish uses Unicode word regex preserving accented letters and reviewed Spanish pronouns.
+  es:
+    method: "unicode_word_regex"
+    pattern: "[\\p{L}\\p{N}]+(?:['’\\-][\\p{L}\\p{N}]+)*"
+    notes:
+      - "Use Unicode-aware matching to preserve Spanish accented letters and ñ."
+      - "pronoun_ratio uses the reviewed Spanish pronoun dictionary below."
+
+  other:
+    method: "unicode_word_regex"
+    pattern: "[\\p{L}\\p{N}]+(?:['’\\-][\\p{L}\\p{N}]+)*"
+    notes:
+      - "Basic token counts may be produced with extraction_status = language_limited."
+      - "Language-dependent features (title_word_in_lyrics, pronoun_ratio) remain null unless language-specific rules exist."
+
+  unknown:
+    method: "unicode_word_regex"
+    pattern: "[\\p{L}\\p{N}]+(?:['’\\-][\\p{L}\\p{N}]+)*"
+    notes:
+      - "Basic counts may be produced if readable text is present (extraction_status = language_limited)."
+      - "pronoun_ratio and title_word_in_lyrics remain null."
+      - "Record the language as unknown; do not infer a language silently."
+
+chorus_detection:
+  method: "explicit_chorus_tags_with_multiline_block_similarity_fallback"
+  explicit_tag_pattern: "\\[\\s*(?:chorus|refrain|hook|điệp khúc)\\b[^\\]]*\\]"
+  strip_section_tags_pattern: "\\[[^\\]]*\\]"
+  min_block_lines: 3
+  max_block_lines: 10
+  min_unique_lines: 2
+  min_block_words: 6
+  similarity_threshold: 0.80
+  notes:
+    - "If >= 2 explicit [Chorus]/[Refrain]/[Hook] tags exist, chorus_repetition_count is at least (tag_count - 1)."
+    - "For unlabeled lyrics (e.g., LRCLIB), search for non-overlapping multi-line blocks (3-10 normalized lines, >= 2 unique lines, >= 6 words) repeating with token-sequence similarity >= 0.80."
+    - "If no explicit tag and no qualifying repeated block is found, chorus cannot be reliably identified and chorus_repetition_count MUST be NULL (never 0)."
+    - "chorus_repetition_count = 0 is only returned when an explicit chorus tag identifies the chorus block and no additional occurrence exists."
+
+features:
+  word_count:
+    definition: "Number of valid word tokens produced by the language-specific tokenizer."
+    null_when:
+      - "lyrics file is missing, unreadable, or empty/whitespace-only"
+    zero_allowed_when: "text is non-empty and readable but contains only punctuation/symbols (extraction_status = failed)"
+
+  unique_word_count:
+    definition: "Number of distinct normalized tokens."
+    normalization: "lowercase (casefold) Unicode NFC tokens"
+    null_when:
+      - "lyrics file is missing, unreadable, or empty/whitespace-only"
+
+  lexical_diversity:
+    formula: "unique_word_count / word_count"
+    null_when:
+      - "word_count is null or zero"
+    valid_range: [0.0, 1.0]
+
+  repetition_ratio:
+    formula: "(word_count - unique_word_count) / word_count"
+    null_when:
+      - "word_count is null or zero"
+    valid_range: [0.0, 1.0]
+    note: "Defined as token repetition complement of lexical_diversity (lexical_diversity + repetition_ratio = 1.0 when word_count > 0)."
+
+  avg_word_length:
+    formula: "sum(length(token) for token in tokens) / word_count"
+    unit: "Unicode code points per normalized token"
+    null_when:
+      - "word_count is null or zero"
+    note: "Token length is tokenizer-dependent and not directly comparable across languages."
+
+  line_count:
+    definition: "Number of non-empty lines after splitting on newline and trimming whitespace."
+    null_when:
+      - "lyrics file is missing, unreadable, or empty/whitespace-only"
+    zero_allowed_when: false
+
+  chorus_repetition_count:
+    definition: "Number of additional occurrences of a chorus block identified by explicit section labels or multi-line repetition heuristic."
+    default: null
+    method: "explicit_chorus_tags_with_multiline_block_similarity_fallback"
+    null_when:
+      - "chorus cannot be identified reliably (no explicit chorus tag and no repeated multi-line block)"
+      - "lyrics are missing, unreadable, empty, or have insufficient lines"
+    zero_allowed_only_if: "chorus was explicitly identified by a [Chorus]/[Refrain]/[Hook] tag and no additional occurrence was found"
+
+  title_word_in_lyrics:
+    definition: "Whether at least one alphabetic content word from the song title (after removing language stopwords) appears in normalized lyrics tokens."
+    content_word_policy:
+      exclude_stopwords: true
+      stopwords_by_language: "language-specific lists maintained in title_stopwords section"
+      require_language_match: true
+    null_when:
+      - "title is missing"
+      - "lyrics are missing, unreadable, empty, or have zero tokens"
+      - "content words cannot be extracted reliably (e.g., numeric-only title, all-stopword title, or unsupported language)"
+    note: "For mixed lyrics, compare title content tokens against the combined normalized token set using the union of supported stopwords; document this limitation."
+
+  punctuation_ratio:
+    formula: "count_unicode_punctuation_characters / count_all_characters_in_nonempty_trimmed_lyrics_text"
+    numerator: "Unicode punctuation categories Pc, Pd, Pe, Pf, Pi, Po, Ps in trimmed lyrics text"
+    denominator: "All characters in the trimmed, non-empty lyrics text (len(text.strip())), including internal whitespace and newlines."
+    null_when:
+      - "lyrics text is missing, unreadable, or empty/whitespace-only"
+    valid_range: [0.0, 1.0]
+
+  pronoun_ratio:
+    formula: "number_of_token_positions_matched_in_language_pronoun_dictionary / word_count"
+    null_when:
+      - "word_count is null or zero"
+      - "language is unknown, mixed, or unsupported (outside en, vi, ko, es)"
+    valid_range: [0.0, 1.0]
+    note: "Uses exact token/multi-token matching (never substring matching). Longest multi-token pronoun phrase wins at each position."
+
+title_stopwords:
+  en:
+    - "a"
+    - "an"
+    - "the"
+    - "and"
+    - "or"
+    - "but"
+    - "if"
+    - "then"
+    - "of"
+    - "to"
+    - "in"
+    - "on"
+    - "at"
+    - "for"
+    - "from"
+    - "with"
+    - "by"
+    - "is"
+    - "am"
+    - "are"
+    - "was"
+    - "were"
+    - "be"
+    - "been"
+    - "being"
+    - "do"
+    - "does"
+    - "did"
+    - "have"
+    - "has"
+    - "had"
+    - "i"
+    - "me"
+    - "my"
+    - "we"
+    - "us"
+    - "our"
+    - "you"
+    - "your"
+    - "he"
+    - "him"
+    - "his"
+    - "she"
+    - "her"
+    - "it"
+    - "they"
+    - "them"
+    - "their"
+    - "this"
+    - "that"
+    - "these"
+    - "those"
+    - "what"
+    - "which"
+    - "who"
+    - "whom"
+    - "as"
+    - "not"
+    - "so"
+    - "too"
+    - "very"
+  vi:
+    - "và"
+    - "là"
+    - "của"
+    - "cho"
+    - "với"
+    - "những"
+    - "các"
+    - "một"
+    - "đã"
+    - "đang"
+    - "sẽ"
+    - "thì"
+    - "mà"
+    - "ở"
+    - "trong"
+    - "trên"
+    - "dưới"
+    - "khi"
+    - "nếu"
+    - "vì"
+    - "do"
+    - "từ"
+    - "này"
+    - "đó"
+    - "ấy"
+    - "ai"
+    - "gì"
+    - "nào"
+    - "cũng"
+    - "không"
+    - "rất"
+    - "như"
+    - "về"
+    - "để"
+    - "được"
+    - "bị"
+  ko:
+    - "그"
+    - "이"
+    - "저"
+    - "것"
+    - "수"
+    - "나"
+    - "너"
+    - "내"
+    - "네"
+    - "우리"
+    - "저희"
+    - "그리고"
+    - "하지만"
+    - "그래서"
+    - "는"
+    - "은"
+    - "가"
+    - "을"
+    - "를"
+    - "에"
+    - "에서"
+    - "로"
+    - "으로"
+    - "와"
+    - "과"
+    - "도"
+    - "만"
+  es:
+    - "el"
+    - "la"
+    - "los"
+    - "las"
+    - "un"
+    - "una"
+    - "unos"
+    - "unas"
+    - "y"
+    - "o"
+    - "pero"
+    - "de"
+    - "a"
+    - "en"
+    - "por"
+    - "para"
+    - "con"
+    - "del"
+    - "al"
+    - "es"
+    - "soy"
+    - "eres"
+    - "somos"
+    - "son"
+    - "mi"
+    - "mis"
+    - "tu"
+    - "tus"
+    - "su"
+    - "sus"
+    - "yo"
+    - "me"
+    - "te"
+    - "se"
+    - "lo"
+    - "le"
+    - "les"
+    - "nos"
+    - "vosotros"
+    - "usted"
+    - "ustedes"
+    - "ellos"
+    - "ellas"
+    - "que"
+    - "quien"
+    - "cual"
+    - "como"
+    - "no"
+
+pronouns:
+  matching:
+    case_insensitive: true
+    exact_token_match: true
+    count_each_occurrence: true
+    longest_phrase_wins: true
+    ambiguous_forms_policy: "exclude substring matching; only match complete normalized tokens or multi-token phrases"
+  en:
+    # Reviewed English personal, possessive, reflexive, and interrogative/relative pronouns
+    # plus common contraction tokens retained by unicode_word_regex.
+    - "i"
+    - "i'm"
+    - "i've"
+    - "i'll"
+    - "i'd"
+    - "me"
+    - "my"
+    - "mine"
+    - "myself"
+    - "we"
+    - "we're"
+    - "we've"
+    - "we'll"
+    - "we'd"
+    - "us"
+    - "our"
+    - "ours"
+    - "ourselves"
+    - "you"
+    - "you're"
+    - "you've"
+    - "you'll"
+    - "you'd"
+    - "your"
+    - "yours"
+    - "yourself"
+    - "yourselves"
+    - "he"
+    - "he's"
+    - "he'll"
+    - "he'd"
+    - "him"
+    - "his"
+    - "himself"
+    - "she"
+    - "she's"
+    - "she'll"
+    - "she'd"
+    - "her"
+    - "hers"
+    - "herself"
+    - "it"
+    - "it's"
+    - "its"
+    - "itself"
+    - "they"
+    - "they're"
+    - "they've"
+    - "they'll"
+    - "they'd"
+    - "them"
+    - "their"
+    - "theirs"
+    - "themselves"
+    - "who"
+    - "whom"
+    - "whose"
+    - "what"
+    - "which"
+  vi:
+    # Reviewed Vietnamese pronouns and common lyric address pronouns.
+    # Limitation: Kinship terms (anh, em, chị, cô, chú, bác, ông, bà) function as
+    # first/second-person pronouns in Vietnamese pop lyrics but can also be nouns.
+    - "tôi"
+    - "ta"
+    - "tao"
+    - "tớ"
+    - "mình"
+    - "chúng"
+    - "chúng tôi"
+    - "chúng ta"
+    - "chúng mình"
+    - "chúng nó"
+    - "bọn mình"
+    - "tụi mình"
+    - "bạn"
+    - "cậu"
+    - "mày"
+    - "mi"
+    - "anh"
+    - "em"
+    - "chàng"
+    - "nàng"
+    - "chị"
+    - "cô"
+    - "chú"
+    - "bác"
+    - "ông"
+    - "bà"
+    - "họ"
+    - "nó"
+    - "hắn"
+    - "người ta"
+    - "ai"
+    - "gì"
+    - "nào"
+  ko:
+    # Reviewed Korean standalone pronouns and unambiguous particle-attached eojeol forms.
+    # Limitation: Korean is an agglutinative pro-drop language; whitespace tokenization
+    # binds case/topic particles to pronoun stems, so common inflected forms are included.
+    - "나"
+    - "나는"
+    - "난"
+    - "나를"
+    - "날"
+    - "나의"
+    - "내"
+    - "내가"
+    - "나에게"
+    - "내게"
+    - "나도"
+    - "나만"
+    - "너"
+    - "너는"
+    - "넌"
+    - "너를"
+    - "널"
+    - "너의"
+    - "네"
+    - "네가"
+    - "니"
+    - "니가"
+    - "너에게"
+    - "네게"
+    - "너도"
+    - "너만"
+    - "너와"
+    - "저"
+    - "저는"
+    - "전"
+    - "저를"
+    - "제"
+    - "제가"
+    - "우리"
+    - "우리는"
+    - "우린"
+    - "우리를"
+    - "우리의"
+    - "우리도"
+    - "저희"
+    - "당신"
+    - "당신은"
+    - "당신을"
+    - "당신의"
+    - "그대"
+    - "그대는"
+    - "그대를"
+    - "그대의"
+    - "그대여"
+    - "그"
+    - "그는"
+    - "그를"
+    - "그의"
+    - "그녀"
+    - "그녀는"
+    - "그녀를"
+    - "그녀의"
+    - "그들"
+    - "그들은"
+    - "누구"
+    - "누가"
+    - "무엇"
+    - "뭐"
+  es:
+    # Reviewed Spanish personal, clitic, reflexive, and interrogative pronouns.
+    - "yo"
+    - "me"
+    - "mí"
+    - "conmigo"
+    - "nosotros"
+    - "nosotras"
+    - "nos"
+    - "tú"
+    - "te"
+    - "ti"
+    - "contigo"
+    - "usted"
+    - "ustedes"
+    - "vosotros"
+    - "vosotras"
+    - "él"
+    - "ella"
+    - "ello"
+    - "ellos"
+    - "ellas"
+    - "lo"
+    - "la"
+    - "los"
+    - "las"
+    - "le"
+    - "les"
+    - "se"
+    - "sí"
+    - "consigo"
+    - "quién"
+    - "quiénes"
+    - "qué"
+    - "cuál"
+    - "cuáles"
+
+validation:
+  unique_key: "spotify_track_id"
+  reject_unmapped_lyrics_files: true
+  reject_duplicate_track_ids: true
+  require_existing_file_for_success_status: true
+  empty_file_is_not_success: true
+  never_fill_unknown_features_with_zero: true
+  never_create_duplicate_rows_on_rerun: true
+  upsert_key: "spotify_track_id"
+  log_each_track: true
+  log_fields:
+    - "spotify_track_id"
+    - "title"
+    - "language"
+    - "lyrics_status"
+    - "extraction_status"
+    - "lyrics_file"
+    - "word_count"
+    - "error_reason"
+    - "processed_at"
+    - "rules_version"
+
+reporting:
+  compare_markets_with_language_caveat: true
+  report_sample_size_for_each_plot: true
+  save_chart_source_data: true
+  document_unmeasurable_features: true
+  document_tokenization_limitations: true

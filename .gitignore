@@ -9,6 +9,10 @@ __pycache__/
 .DS_Store
 .vscode/
 
+# Models and large binaries
+models/*.pkl
+models/*.joblib
+
 # Raw audio files (ignored due to size limits)
 data/raw/audio/*.wav
 data/raw/audio/*.mp3
@@ -22,3 +26,5 @@ data/sampling/*.csv
 models/*.pkl
 !models/scaler.pkl
 !models/mlr_pipeline.pkl
+# Processed large files
+data/processed/audio_*.csv
