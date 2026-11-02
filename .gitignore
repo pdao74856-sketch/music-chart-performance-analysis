@@ -9,9 +9,13 @@ __pycache__/
 .DS_Store
 .vscode/
 
+# Models and large binaries
+models/*.pkl
+models/*.joblib
+
 # Raw audio files (ignored due to size limits)
 data/raw/audio/*.wav
 data/raw/audio/*.mp3
 
-# Processed audio feature datasets (stored in Supabase, not git)
+# Processed large files
 data/processed/audio_*.csv
