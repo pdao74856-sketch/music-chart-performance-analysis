@@ -610,10 +610,15 @@ def run_validation_checks(
     
     test_tiers = pd.DataFrame({"market": market_test, "score": y_test})
     test_tiers["tier"] = pd.Categorical(test_tiers["score"].apply(assign_tier), categories=EXPECTED_TIERS)
-    tier_counts = test_tiers.groupby(["market", "tier"], observed=False).size().unstack(fill_value=0)
-    has_full_coverage = bool((tier_counts[EXPECTED_TIERS] > 0).all().all())
+    tier_counts = (
+        test_tiers.groupby(["market", "tier"], observed=False)
+        .size()
+        .unstack(fill_value=0)
+        .reindex(index=config["market_levels"], columns=EXPECTED_TIERS, fill_value=0)
+    )
+    has_full_coverage = bool((tier_counts > 0).all().all())
     report["soft_checks"]["check_12_tab1_coverage"] = {
-        "tier_table": tier_counts[EXPECTED_TIERS].to_dict(),
+        "tier_table": tier_counts.to_dict(),
         "full_coverage": has_full_coverage,
         "status": "OK" if has_full_coverage else "WARNING",
     }
