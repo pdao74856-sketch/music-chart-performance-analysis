@@ -9,12 +9,54 @@ import json
 import urllib.request
 import urllib.parse
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 import pandas as pd
 from dotenv import dotenv_values
 
 # Default local cache path
 CACHE_PATH = Path("data/processed/modeling_dataset_clean_cache.csv")
+
+
+# Default 32 clean modeling columns to select from Supabase REST API
+DEFAULT_SELECT_COLUMNS = [
+    # Identifiers & metadata (7)
+    "spotify_track_id",
+    "market",
+    "chart_score",
+    "title",
+    "artist",
+    "album",
+    "release_date",
+    # Year control & mode (2)
+    "release_year",
+    "audio_mode",
+    # 16 Audio features Librosa (16)
+    "tempo",
+    "onset_rate",
+    "tempo_stability",
+    "energy",
+    "loudness_proxy",
+    "rms_variability",
+    "spectral_centroid",
+    "spectral_bandwidth",
+    "chord_change_rate",
+    "key_confidence",
+    "chroma_repetition_determinism",
+    "chroma_mean_pattern_duration",
+    "chroma_longest_pattern_duration",
+    "mfcc_repetition_determinism",
+    "mfcc_mean_pattern_duration",
+    "mfcc_longest_pattern_duration",
+    # 6 Lyrics features NLP (6)
+    "word_count",
+    "repetition_ratio",
+    "avg_word_length",
+    "line_count",
+    "chorus_repetition_count",
+    "punctuation_ratio",
+    # Audit column (1)
+    "lyrics_status",
+]
 
 
 def get_supabase_credentials() -> Dict[str, str]:
@@ -41,12 +83,25 @@ def get_supabase_credentials() -> Dict[str, str]:
 def load_clean_modeling_data(
     use_cache: bool = True,
     force_refresh: bool = False,
-    cache_path: Path = CACHE_PATH
+    cache_path: Path = CACHE_PATH,
+    select: Optional[Union[str, List[str]]] = None
 ) -> pd.DataFrame:
     """
     Loads the clean modeling dataset (is_sampled = TRUE AND has_both_rows = TRUE).
     Tries local cache first if available and force_refresh is False.
     Otherwise queries Supabase REST API with pagination.
+
+    Parameters
+    ----------
+    use_cache : bool
+        Whether to load from/save to local CSV cache.
+    force_refresh : bool
+        If True, ignores local cache and queries Supabase directly.
+    cache_path : Path
+        Path to local CSV cache.
+    select : list of str or str, optional
+        Specific columns to query via REST API to minimize RAM and network bandwidth.
+        Defaults to DEFAULT_SELECT_COLUMNS.
     """
     if use_cache and not force_refresh and cache_path.exists():
         df_cached = pd.read_csv(cache_path)
@@ -64,6 +119,15 @@ def load_clean_modeling_data(
             f"and local cache '{cache_path}' does not exist."
         )
 
+    # Prepare select columns string
+    if select is None:
+        select_cols = DEFAULT_SELECT_COLUMNS
+    elif isinstance(select, str):
+        select_cols = [c.strip() for c in select.split(",")]
+    else:
+        select_cols = list(select)
+    select_param = ",".join(select_cols)
+
     # Query with pagination (1000 items per request)
     all_rows: List[Dict[str, Any]] = []
     offset = 0
@@ -73,6 +137,7 @@ def load_clean_modeling_data(
         endpoint = (
             f"{url}/rest/v1/modeling_dataset?"
             f"is_sampled=eq.true&has_both_rows=eq.true"
+            f"&select={urllib.parse.quote(select_param)}"
             f"&offset={offset}&limit={page_size}"
         )
         req = urllib.request.Request(
