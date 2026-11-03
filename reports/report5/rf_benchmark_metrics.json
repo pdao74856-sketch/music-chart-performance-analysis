@@ -1,0 +1,117 @@
+{
+  "model_name": "Model 4: Random Forest Benchmark (GroupKFold)",
+  "n_train": 1688,
+  "n_test": 410,
+  "features_count": 26,
+  "features": [
+    "tempo",
+    "onset_rate",
+    "tempo_stability",
+    "energy",
+    "loudness_proxy",
+    "rms_variability",
+    "spectral_centroid",
+    "spectral_bandwidth",
+    "chord_change_rate",
+    "key_confidence",
+    "mode",
+    "chroma_repetition_determinism",
+    "chroma_mean_pattern_duration",
+    "chroma_longest_pattern_duration",
+    "mfcc_repetition_determinism",
+    "mfcc_mean_pattern_duration",
+    "mfcc_longest_pattern_duration",
+    "log_word_count",
+    "repetition_ratio",
+    "avg_word_length",
+    "line_count",
+    "chorus_repetition_count",
+    "punctuation_ratio",
+    "release_year",
+    "Market_VN",
+    "Market_KR"
+  ],
+  "optimal_hyperparameters": {
+    "max_depth": 6,
+    "min_samples_leaf": 5,
+    "n_estimators": 150
+  },
+  "cv_mae": 29.08,
+  "overall_metrics": {
+    "mae": 29.13,
+    "rmse": 37.61,
+    "r2": 0.0686
+  },
+  "by_market": {
+    "VN": {
+      "n_samples": 105,
+      "mae": 33.66,
+      "rmse": 41.78,
+      "r2": 0.1335
+    },
+    "US": {
+      "n_samples": 165,
+      "mae": 27.13,
+      "rmse": 35.96,
+      "r2": 0.0312
+    },
+    "KR": {
+      "n_samples": 140,
+      "mae": 28.09,
+      "rmse": 36.19,
+      "r2": 0.0281
+    }
+  },
+  "top_features_importance": [
+    {
+      "feature": "release_year",
+      "importance": 3.4621427206388447,
+      "std": 0.5798704834248151
+    },
+    {
+      "feature": "rms_variability",
+      "importance": 0.06647411509597526,
+      "std": 0.04576235840025567
+    },
+    {
+      "feature": "spectral_bandwidth",
+      "importance": 0.0656767133594034,
+      "std": 0.036465937452757384
+    },
+    {
+      "feature": "avg_word_length",
+      "importance": 0.05421683251448748,
+      "std": 0.06826907212785714
+    },
+    {
+      "feature": "chroma_longest_pattern_duration",
+      "importance": 0.04410485133763409,
+      "std": 0.02512911715656403
+    },
+    {
+      "feature": "energy",
+      "importance": 0.03226764039648842,
+      "std": 0.018708448979845905
+    },
+    {
+      "feature": "loudness_proxy",
+      "importance": 0.019806444511089084,
+      "std": 0.016048906781274762
+    },
+    {
+      "feature": "punctuation_ratio",
+      "importance": 0.013846892585702975,
+      "std": 0.0390966303799083
+    },
+    {
+      "feature": "Market_VN",
+      "importance": 0.013845054090764109,
+      "std": 0.014688989533637953
+    },
+    {
+      "feature": "onset_rate",
+      "importance": 0.007319367039137959,
+      "std": 0.10822537066756052
+    }
+  ]
+}

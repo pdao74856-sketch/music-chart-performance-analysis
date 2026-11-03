@@ -123,16 +123,21 @@ def load_clean_modeling_data(
 
     # Fallback to local processed dataset if offline or not configured
     if df is None:
+        clean_2098_path = ROOT_DIR / "data" / "processed" / "modeling_dataset_clean_2098.csv"
         local_path = ROOT_DIR / "data" / "processed" / "modeling_dataset.csv"
-        if not local_path.exists():
-            raise FileNotFoundError(f"Local modeling dataset not found at {local_path}")
         
-        print(f"[SupabaseClient] Loading from local CSV fallback: {local_path.name}")
-        df_raw = pd.read_csv(local_path)
-        
-        # Apply standard clean filter: is_sampled = True and has_both_rows = True
-        mask = (df_raw.get("is_sampled") == True) & (df_raw.get("has_both_rows") == True)
-        df = df_raw[mask].copy()
+        if clean_2098_path.exists():
+            print(f"[SupabaseClient] Loading from canonical clean CSV: {clean_2098_path.name}")
+            df = pd.read_csv(clean_2098_path)
+        elif local_path.exists():
+            print(f"[SupabaseClient] Loading from local CSV fallback: {local_path.name}")
+            df_raw = pd.read_csv(local_path)
+            
+            # Apply standard clean filter: is_sampled = True and has_both_rows = True
+            mask = (df_raw.get("is_sampled") == True) & (df_raw.get("has_both_rows") == True)
+            df = df_raw[mask].copy()
+        else:
+            raise FileNotFoundError(f"Neither {clean_2098_path} nor {local_path} exists.")
 
         # Harmonize column names and transformations if needed
         if "tempo" not in df.columns and "tempo_bpm" in df.columns:
