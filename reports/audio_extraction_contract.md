@@ -205,7 +205,7 @@ Các thông số vận hành tiêu chuẩn:
   14. `mfcc_longest_pattern_duration` (Standardized)
   15. `mode` (Nhị phân 0/1, KHÔNG chuẩn hóa StandardScaler)
 
-* **File Artifact Bàn giao:** Thứ tự cột chính thức trên được serialize và lưu trữ tại [`models/model1_feature_names.json`](file:///d:/ADY/music-chart-performance-analysis/models/model1_feature_names.json) để module inference của Web App (`pipeline_inference.py`) nạp đúng thứ tự tuyệt đối khi gọi `.predict()`.
+* **Kế hoạch bàn giao:** Danh mục và thứ tự 15 cột chính thức của Model 1 được quy định bất di bất dịch như trên; file metadata serialize sẽ được bàn giao kèm script huấn luyện Model 1 (`train_model1_audio.py`) tại mốc Checkpoint 2 (05/11).
 
 ---
 
