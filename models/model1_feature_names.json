@@ -1,0 +1,51 @@
+{
+  "model_name": "Model 1: Audio-only Baseline OLS",
+  "owner": "Member 2 (Audio Features & Showcase Engineer)",
+  "version": "v2",
+  "covariance_type": "cluster",
+  "cluster_group_column": "spotify_track_id",
+  "total_features": 15,
+  "continuous_features_count": 14,
+  "binary_features_count": 1,
+  "formula": "chart_score ~ const + sum(beta_j * AudioContinuous_j_std) + alpha * mode",
+  "ordered_features": [
+    "tempo",
+    "onset_rate",
+    "tempo_stability",
+    "energy",
+    "rms_variability",
+    "spectral_centroid",
+    "chord_change_rate",
+    "key_confidence",
+    "chroma_repetition_determinism",
+    "chroma_mean_pattern_duration",
+    "chroma_longest_pattern_duration",
+    "mfcc_repetition_determinism",
+    "mfcc_mean_pattern_duration",
+    "mfcc_longest_pattern_duration",
+    "mode"
+  ],
+  "continuous_features_scaled": [
+    "tempo",
+    "onset_rate",
+    "tempo_stability",
+    "energy",
+    "rms_variability",
+    "spectral_centroid",
+    "chord_change_rate",
+    "key_confidence",
+    "chroma_repetition_determinism",
+    "chroma_mean_pattern_duration",
+    "chroma_longest_pattern_duration",
+    "mfcc_repetition_determinism",
+    "mfcc_mean_pattern_duration",
+    "mfcc_longest_pattern_duration"
+  ],
+  "binary_features_unscaled": [
+    "mode"
+  ],
+  "dropped_features_rationale": {
+    "loudness_proxy": "Excluded from OLS due to near-perfect collinearity with energy (r = 0.968, VIF = 18.3 > 5.0). Kept in RF and Web Sliders.",
+    "spectral_bandwidth": "Excluded from OLS due to high multicollinearity with spectral_centroid (r = 0.897, VIF = 6.48 > 5.0; drops to 1.31 when removed). Kept in RF and Showcase Radar."
+  }
+}

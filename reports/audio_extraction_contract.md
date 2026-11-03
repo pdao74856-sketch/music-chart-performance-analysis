@@ -32,7 +32,7 @@ Sau khi loại bỏ 4 biến trùng lặp hoàn toàn ($r = 1.0$), tập đặc 
 | 5 | `rms_variability` | Động năng | độ lệch chuẩn RMS | $[0.02, 0.18]$ | ✅ Có (Standardized) | ✅ Có |
 | 6 | `loudness_proxy` | Âm sắc / Phổ | dBFS | $[-33.6, -4.9]$ | ❌ Loại (Tránh VIF $\approx 18.3$) | ✅ Có (Dùng chính trên UI) |
 | 7 | `spectral_centroid` | Âm sắc / Phổ | Hz | $[1000, 4200]$ | ✅ Có (Standardized) | ✅ Có |
-| 8 | `spectral_bandwidth` | Âm sắc / Phổ | Hz | $[1200, 3600]$ | ⚠️ Dự phòng VIF Check ($< 5.0$) | ✅ Có |
+| 8 | `spectral_bandwidth` | Âm sắc / Phổ | Hz | $[1200, 3600]$ | ❌ Loại (VIF = $6.48 > 5.0$) | ✅ Có |
 | 9 | `chord_change_rate` | Hòa âm | hợp âm/phút | $[15.0, 95.0]$ | ✅ Có (Standardized) | ✅ Có |
 | 10 | `key_confidence` | Hòa âm | tương quan Pearson | $[0.25, 0.95]$ | ✅ Có (Standardized) | ✅ Có |
 | 11 | `mode` | Hòa âm | nhị phân $\{0, 1\}$ | $0$ (Minor) hoặc $1$ (Major) | ✅ Giữ nguyên 0/1 (Không scale) | ✅ Có |
@@ -103,10 +103,30 @@ Sau khi loại bỏ 4 biến trùng lặp hoàn toàn ($r = 1.0$), tập đặc 
    * *Ý nghĩa:* Độ rộng dải tần số bao quanh trọng tâm phổ, phản ánh mức độ lấp đầy các dải tần của bản phối.
    * *Công thức Librosa:*
      $$BW(t) = \left( \frac{\sum_n (f_n - f_c(t))^2 \cdot |S(n, t)|}{\sum_n |S(n, t)|} \right)^{1/2}$$
-   * *Quy tắc kiểm định VIF thực tế (v2 Protocol):*
-     * Vì $\text{Corr}(\text{spectral\_centroid}, \text{spectral\_bandwidth}) = 0.897$, trước khi fit chính thức OLS, TV1 bắt buộc chạy hàm kiểm tra VIF trên ma trận biến độc lập.
-     * **Nếu $\text{VIF} \ge 5.0$:** Loại bỏ `spectral_bandwidth` khỏi ma trận hồi quy OLS (chỉ giữ `spectral_centroid`), nhưng vẫn giữ lại trong Random Forest và Web UI.
-     * **Nếu $\text{VIF} < 5.0$:** Giữ lại cả 2 trong OLS và ghi nhận số liệu minh bạch vào báo cáo.
+   * *Kết quả kiểm định thực nghiệm VIF (Empirical VIF Audit):*
+     Do tương quan song phương $\text{Corr}(\text{spectral\_centroid}, \text{spectral\_bandwidth}) = 0.897$, nhóm đã chạy kiểm định VIF thực tế trên toàn bộ 1,912 bản ghi âm học:
+
+     | Đặc trưng (`feature`) | VIF (Khi giữ cả 2 biến) | VIF (Sau khi loại `spectral_bandwidth`) | Đánh giá Kinh tế lượng |
+     | :--- | :---: | :---: | :--- |
+     | **`spectral_bandwidth`** | **$6.48$** (> 5.0) | *Đã loại bỏ* | Đa cộng tuyến nghiêm trọng với Centroid |
+     | **`spectral_centroid`** | **$6.22$** (> 5.0) | **$1.31$** (< 2.0) | Đạt chuẩn an toàn tuyệt đối |
+     | `chroma_longest_pattern_duration` | $2.84$ | $2.84$ | An toàn (< 5.0) |
+     | `mfcc_longest_pattern_duration` | $2.53$ | $2.53$ | An toàn (< 5.0) |
+     | `energy` | $2.18$ | $2.05$ | An toàn (< 5.0) |
+     | `chroma_mean_pattern_duration` | $2.11$ | $2.11$ | An toàn (< 5.0) |
+     | `tempo` | $2.11$ | $2.11$ | An toàn (< 5.0) |
+     | `rms_variability` | $2.02$ | $1.98$ | An toàn (< 5.0) |
+     | `chord_change_rate` | $2.00$ | $2.00$ | An toàn (< 5.0) |
+     | `mfcc_mean_pattern_duration` | $1.85$ | $1.85$ | An toàn (< 5.0) |
+     | `tempo_stability` | $1.49$ | $1.49$ | An toàn (< 5.0) |
+     | `chroma_repetition_determinism` | $1.36$ | $1.36$ | An toàn (< 5.0) |
+     | `mfcc_repetition_determinism` | $1.36$ | $1.36$ | An toàn (< 5.0) |
+     | `key_confidence` | $1.30$ | $1.29$ | An toàn (< 5.0) |
+     | `onset_rate` | $1.24$ | $1.22$ | An toàn (< 5.0) |
+
+   * *Quyết định chốt hạ (Final Decision):*
+     * **Trong OLS (Model 1, 2, 3):** **Loại bỏ hoàn toàn `spectral_bandwidth`** khỏi ma trận hồi quy tuyến tính, chỉ giữ `spectral_centroid` làm đại diện cho đặc trưng phổ âm học để đảm bảo toàn bộ ma trận có $\text{VIF} < 2.9$.
+     * **Trong Random Forest (Model 4), Tab 1 & Tab 2:** **Giữ lại `spectral_bandwidth`** vì thuật toán cây quyết định không bị ảnh hưởng bởi đa cộng tuyến tuyến tính và cung cấp góc nhìn đa chiều trên biểu đồ Radar.
 
 ---
 
@@ -156,6 +176,36 @@ Các thông số vận hành tiêu chuẩn:
 
 17. **`mfcc_longest_pattern_duration`:**
     * *Ý nghĩa:* Đoạn lặp âm sắc/bản phối dài nhất trong toàn bộ tác phẩm.
+
+---
+
+### 3.5. Danh Mục Biến Chính Thức của Model 1 (Model 1 Feature Contract — Thành viên 2)
+
+* **Bản chất Kiến trúc Học thuật:**
+  * **Model 1 là Audio-only Baseline Model**: Mô hình được thiết kế để đo lường thuần túy sức mạnh giải thích độc lập của riêng các tín hiệu âm học Librosa đối với `chart_score`.
+  * **Phản biện kiến trúc:** **Model 1 TUYỆT ĐỐI KHÔNG CHỨA biến năm phát hành (`release_year`) hay các biến giả thị trường (`Market_VN`, `Market_KR`)**. Việc đưa biến kiểm soát thị trường và thời gian thuộc phạm vi cấu trúc phân cấp của Model 3 (TV1 phụ trách). Nếu đưa Market/Year vào Model 1 sẽ phá vỡ logic kiểm định tăng bậc (Hierarchical Model Testing) và làm mất vai trò đối chứng cơ sở (Pure Acoustic Baseline).
+* **Công thức Hồi quy Chính thức của Model 1:**
+  $$\text{ChartScore} = \beta_0 + \sum_{j=1}^{14} \beta_j \cdot \text{AudioContinuous}_{j\text{\_std}} + \alpha \cdot \text{Mode} + \epsilon$$
+  *(Fit với Cluster-Robust SE theo `spotify_track_id`)*
+
+* **Tổng số biến đưa vào hồi quy Model 1:** Đúng **15 biến âm học** (gồm 14 biến liên tục đã Z-score hóa + 1 biến nhị phân `mode` 0/1 không scale):
+  1. `tempo` (Standardized)
+  2. `onset_rate` (Standardized)
+  3. `tempo_stability` (Standardized)
+  4. `energy` (Standardized)
+  5. `rms_variability` (Standardized)
+  6. `spectral_centroid` (Standardized — Đại diện duy nhất nhóm phổ sau khi loại `spectral_bandwidth`)
+  7. `chord_change_rate` (Standardized)
+  8. `key_confidence` (Standardized)
+  9. `chroma_repetition_determinism` (Standardized)
+  10. `chroma_mean_pattern_duration` (Standardized)
+  11. `chroma_longest_pattern_duration` (Standardized)
+  12. `mfcc_repetition_determinism` (Standardized)
+  13. `mfcc_mean_pattern_duration` (Standardized)
+  14. `mfcc_longest_pattern_duration` (Standardized)
+  15. `mode` (Nhị phân 0/1, KHÔNG chuẩn hóa StandardScaler)
+
+* **File Artifact Bàn giao:** Thứ tự cột chính thức trên được serialize và lưu trữ tại [`models/model1_feature_names.json`](file:///d:/ADY/music-chart-performance-analysis/models/model1_feature_names.json) để module inference của Web App (`pipeline_inference.py`) nạp đúng thứ tự tuyệt đối khi gọi `.predict()`.
 
 ---
 
