@@ -68,13 +68,16 @@ def process_coefficients_and_wald():
     df_wald = pd.read_csv(wald_path)
     df_slopes = pd.read_csv(slopes_path)
 
-    # Dynamic label_type
+    # Dynamic test_level and label_type
+    df_coef["test_level"] = df_coef["feature"].apply(
+        lambda f: "coef_interaction" if ("_x_" in f or "×" in f) else "coef"
+    )
     df_coef["label_type"] = df_coef["feature"].apply(
         lambda f: "US-slope" if f in interaction_bases else "shared"
     )
 
     # Main Effects Family (24 predictors in M2b: non-const, non-interaction)
-    main_mask = ~df_coef["feature"].str.contains("__x__") & (df_coef["feature"] != "const")
+    main_mask = (df_coef["test_level"] == "coef") & (df_coef["feature"] != "const")
     p_main = df_coef.loc[main_mask, "p_value"].values
 
     _, holm_main, _, _ = multipletests(p_main, method="holm")
@@ -90,6 +93,10 @@ def process_coefficients_and_wald():
     sorted_holm = holm_main[sort_idx]
     assert np.all(np.diff(sorted_holm) >= -1e-9), "Assertion Failed: Holm must be monotonic with p_raw"
     print("[Assert Passed] Main Effects: Holm >= p_raw, q_bh <= Holm, values <= 1.0, Holm monotonic.")
+
+    df_coef["holm"] = np.nan
+    df_coef["q_bh"] = np.nan
+    df_coef["evidence_tier"] = pd.Series(None, index=df_coef.index, dtype=object)
 
     df_coef.loc[main_mask, "holm"] = holm_main
     df_coef.loc[main_mask, "q_bh"] = bh_main
@@ -112,7 +119,7 @@ def process_coefficients_and_wald():
     # Tier helper function
     def get_tier(p_raw, holm, q_bh):
         if pd.isna(holm):
-            return "không có bằng chứng"
+            return np.nan
         if holm < 0.05:
             return "vững"
         elif (p_raw < 0.05 and holm >= 0.05) or (q_bh < 0.10):
@@ -124,7 +131,7 @@ def process_coefficients_and_wald():
         get_tier(r["p_raw"], r["p_holm"], r["q_bh"]) for _, r in df_wald.iterrows()
     ]
 
-    # Map Wald results to interaction terms in df_coef
+    # Map Wald results dictionary for forest plot use
     wald_map = {}
     for _, row in df_wald.iterrows():
         feat = row["feature"]
@@ -136,29 +143,19 @@ def process_coefficients_and_wald():
             "evidence_tier": row["evidence_tier"],
         }
 
-    inter_mask = df_coef["feature"].str.contains("__x__")
-    for idx in df_coef[inter_mask].index:
-        feat_name = df_coef.loc[idx, "feature"].split("__x__")[0].replace("_std", "")
-        if feat_name in wald_map:
-            df_coef.loc[idx, "holm"] = wald_map[feat_name]["holm"]
-            df_coef.loc[idx, "q_bh"] = wald_map[feat_name]["q_bh"]
+    # Assign evidence_tier to df_coef: main gets get_tier, const gets "không có bằng chứng", interactions remain EMPTY (np.nan)
+    for idx in df_coef[main_mask].index:
+        df_coef.loc[idx, "evidence_tier"] = get_tier(
+            df_coef.loc[idx, "p_value"],
+            df_coef.loc[idx, "holm"],
+            df_coef.loc[idx, "q_bh"]
+        )
 
-    # Intercept const
-    df_coef.loc[df_coef["feature"] == "const", "holm"] = np.nan
-    df_coef.loc[df_coef["feature"] == "const", "q_bh"] = np.nan
+    const_idx = df_coef[df_coef["feature"] == "const"].index
+    if len(const_idx) > 0:
+        df_coef.loc[const_idx, "evidence_tier"] = "không có bằng chứng"
 
-    # Assign evidence_tier to df_coef
-    tiers = []
-    for _, row in df_coef.iterrows():
-        if row["feature"] == "const":
-            tiers.append("không có bằng chứng")
-        elif "__x__" in row["feature"]:
-            feat_name = row["feature"].split("__x__")[0].replace("_std", "")
-            tiers.append(wald_map[feat_name]["evidence_tier"])
-        else:
-            tiers.append(get_tier(row["p_value"], row["holm"], row["q_bh"]))
-
-    df_coef["evidence_tier"] = tiers
+    # For interaction rows (test_level == 'coef_interaction'): holm, q_bh, evidence_tier remain np.nan
 
     df_coef.to_csv(coef_path, index=False)
     df_wald.to_csv(wald_path, index=False)

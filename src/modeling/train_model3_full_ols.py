@@ -235,7 +235,7 @@ def main():
     df_slopes = compute_market_slopes(res3, [f"{b}_std" for b in interaction_bases])
     print(df_slopes.to_string(index=False))
     
-    # 7. Model 3 Coefficients Table with VIF
+    # 7. Model 3 Coefficients Table with VIF, Multiple Testing & Test Levels
     vif_path = repo_root / "reports" / "vif_after.csv"
     vif_map = {}
     if vif_path.exists():
@@ -255,6 +255,11 @@ def main():
         ci_high = conf_int.loc[col, 1]
         vif_val = vif_map.get(col, np.nan)
         
+        is_interaction = ("_x_" in col) or ("×" in col)
+        test_level = "coef_interaction" if is_interaction else "coef"
+        is_us_slope = (col.replace("_std", "") in interaction_bases) or (col in interaction_bases)
+        label_type = "US-slope" if (is_us_slope and not is_interaction and col != "const") else "shared"
+
         coef_records.append({
             "feature": col,
             "coef": coef,
@@ -266,8 +271,48 @@ def main():
             "ci_95_lower": ci_low,
             "ci_95_upper": ci_high,
             "vif": vif_val,
+            "test_level": test_level,
+            "label_type": label_type,
         })
     df_coefs = pd.DataFrame(coef_records)
+
+    # Multiple Testing on Main Effects family (non-interaction, non-const)
+    main_mask = (df_coefs["test_level"] == "coef") & (df_coefs["feature"] != "const")
+    p_main = df_coefs.loc[main_mask, "p_value"].values
+    _, holm_main, _, _ = multipletests(p_main, method="holm")
+    _, bh_main, _, _ = multipletests(p_main, method="fdr_bh")
+
+    df_coefs["holm"] = np.nan
+    df_coefs["q_bh"] = np.nan
+    df_coefs["evidence_tier"] = pd.Series(None, index=df_coefs.index, dtype=object)
+
+    df_coefs.loc[main_mask, "holm"] = holm_main
+    df_coefs.loc[main_mask, "q_bh"] = bh_main
+
+    def get_tier(p_raw, holm, q_bh):
+        if pd.isna(holm):
+            return np.nan
+        if holm < 0.05:
+            return "vững"
+        elif (p_raw < 0.05 and holm >= 0.05) or (q_bh < 0.10):
+            return "gợi ý"
+        else:
+            return "không có bằng chứng"
+
+    for idx in df_coefs[main_mask].index:
+        df_coefs.loc[idx, "evidence_tier"] = get_tier(
+            df_coefs.loc[idx, "p_value"],
+            df_coefs.loc[idx, "holm"],
+            df_coefs.loc[idx, "q_bh"]
+        )
+
+    # For const:
+    const_idx = df_coefs[df_coefs["feature"] == "const"].index
+    if len(const_idx) > 0:
+        df_coefs.loc[const_idx, "evidence_tier"] = "không có bằng chứng"
+
+    # For interaction terms (test_level == "coef_interaction"):
+    # holm, q_bh, evidence_tier remain np.nan (TRỐNG) as required
     
     # 8. Single Test Evaluation (Strictly Run Once)
     print("\n[Step 5] Evaluating Model 3 on Frozen Test Set (N=410, 1,000 Cluster Bootstraps)...")
