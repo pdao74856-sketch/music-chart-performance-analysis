@@ -65,38 +65,38 @@
   "top_features_importance": [
     {
       "feature": "release_year",
-      "importance": 3.4621427206388447,
-      "std": 0.5798704834248151
+      "importance": 3.4621427206388438,
+      "std": 0.5798704834248144
     },
     {
       "feature": "rms_variability",
-      "importance": 0.06647411509597526,
-      "std": 0.04576235840025567
+      "importance": 0.0664741150959756,
+      "std": 0.045762358400256366
     },
     {
       "feature": "spectral_bandwidth",
-      "importance": 0.0656767133594034,
-      "std": 0.036465937452757384
+      "importance": 0.06567671335940375,
+      "std": 0.036465937452757856
     },
     {
       "feature": "avg_word_length",
-      "importance": 0.05421683251448748,
-      "std": 0.06826907212785714
+      "importance": 0.054216832514486765,
+      "std": 0.06826907212785724
     },
     {
       "feature": "chroma_longest_pattern_duration",
-      "importance": 0.04410485133763409,
-      "std": 0.02512911715656403
+      "importance": 0.04410485133763338,
+      "std": 0.025129117156563095
     },
     {
       "feature": "energy",
-      "importance": 0.03226764039648842,
-      "std": 0.018708448979845905
+      "importance": 0.03162169593554367,
+      "std": 0.0195114938909269
     },
     {
       "feature": "loudness_proxy",
-      "importance": 0.019806444511089084,
-      "std": 0.016048906781274762
+      "importance": 0.02045238897203454,
+      "std": 0.014959158785769163
     },
     {
       "feature": "punctuation_ratio",
@@ -105,8 +105,8 @@
     },
     {
       "feature": "Market_VN",
-      "importance": 0.013845054090764109,
-      "std": 0.014688989533637953
+      "importance": 0.013845054090763398,
+      "std": 0.014688989533638341
     },
     {
       "feature": "onset_rate",
