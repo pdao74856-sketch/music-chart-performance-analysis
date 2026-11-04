@@ -1,0 +1,3 @@
+seed,c11_diff_pp,c11_status,c12_full_coverage,c12_status,decision
+42,5.41,WARNING,True,OK,FAIL (Market drift > 5.0pp)
+43,4.18,OK,True,OK,SELECTED (First valid seed)

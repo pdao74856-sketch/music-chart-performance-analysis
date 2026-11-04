@@ -17,5 +17,14 @@ models/*.joblib
 data/raw/audio/*.wav
 data/raw/audio/*.mp3
 
+# Local data caches and large CSVs
+data/processed/*.csv
+data/raw/chart/*.csv
+data/sampling/*.csv
+
+# Serialized model binaries (large artifacts)
+models/*.pkl
+!models/scaler.pkl
+!models/mlr_pipeline.pkl
 # Processed large files
 data/processed/audio_*.csv

@@ -1,0 +1,33 @@
+model,baseline,sample,delta_mae,delta_mae_ci_95,pct_mae_better,delta_r2,delta_r2_ci_95,pct_r2_better
+Model 1 (Audio Baseline),Baseline: Global Train Mean,Overall,-0.24129407891026844,"[-0.70, +0.20]",14.099999999999998,0.0009201213491196736,"[-0.0262, +0.0269]",51.800000000000004
+Model 1 (Audio Baseline),Baseline: Global Train Mean,Market_US,-0.2824243045506023,"[-1.03, +0.36]",20.1,-0.004211045677961156,"[-0.0586, +0.0390]",42.1
+Model 1 (Audio Baseline),Baseline: Global Train Mean,Market_KR,-0.16186714636413058,"[-0.98, +0.68]",33.900000000000006,-0.0009736668084490141,"[-0.0469, +0.0479]",45.800000000000004
+Model 1 (Audio Baseline),Baseline: Global Train Mean,Market_VN,-0.2825634439178799,"[-1.14, +0.59]",27.800000000000004,0.007960892009439169,"[-0.0349, +0.0532]",63.6
+Model 1 (Audio Baseline),Baseline: Market Train Mean,Overall,-0.34156542474385176,"[-0.88, +0.23]",10.100000000000001,-0.0018836624867185625,"[-0.0325, +0.0302]",43.9
+Model 1 (Audio Baseline),Baseline: Market Train Mean,Market_US,-1.0138262543500325,"[-1.95, -0.11]",1.3,-0.013835415786919159,"[-0.0780, +0.0407]",31.2
+Model 1 (Audio Baseline),Baseline: Market Train Mean,Market_KR,0.21268842408095523,"[-0.64, +1.10]",67.10000000000001,0.004165402208360369,"[-0.0498, +0.0630]",54.1
+Model 1 (Audio Baseline),Baseline: Market Train Mean,Market_VN,-0.024160681414812757,"[-0.93, +0.91]",48.1,0.005140723474656994,"[-0.0453, +0.0549]",58.3
+Model 2 (Audio + Lyrics),Baseline: Global Train Mean,Overall,-0.4004049605638791,"[-0.99, +0.17]",8.6,1.287038087460779e-05,"[-0.0325, +0.0322]",47.699999999999996
+Model 2 (Audio + Lyrics),Baseline: Global Train Mean,Market_US,-0.3350347437984631,"[-1.33, +0.54]",21.7,-0.010029564358672971,"[-0.0739, +0.0443]",35.099999999999994
+Model 2 (Audio + Lyrics),Baseline: Global Train Mean,Market_KR,-0.4378828150384386,"[-1.58, +0.65]",21.9,-0.004474693362209736,"[-0.0708, +0.0533]",43.0
+Model 2 (Audio + Lyrics),Baseline: Global Train Mean,Market_VN,-0.45315911427676525,"[-1.48, +0.58]",19.3,0.014470024381871838,"[-0.0358, +0.0568]",73.0
+Model 2 (Audio + Lyrics),Baseline: Market Train Mean,Overall,-0.5006763063974624,"[-1.11, +0.15]",6.9,-0.0027909134549636283,"[-0.0371, +0.0317]",43.0
+Model 2 (Audio + Lyrics),Baseline: Market Train Mean,Market_US,-1.0664366935978933,"[-2.24, -0.03]",2.0,-0.019653934467630974,"[-0.0920, +0.0417]",25.8
+Model 2 (Audio + Lyrics),Baseline: Market Train Mean,Market_KR,-0.06332724459335282,"[-1.20, +1.07]",43.9,0.0006643756545996471,"[-0.0647, +0.0650]",48.9
+Model 2 (Audio + Lyrics),Baseline: Market Train Mean,Market_VN,-0.1947563517736981,"[-1.20, +0.83]",35.9,0.011649855847089663,"[-0.0409, +0.0614]",68.7
+Model 2b (+ Context),Baseline: Global Train Mean,Overall,0.37912572032402636,"[-0.48, +1.22]",81.2,0.03956490798717138,"[-0.0079, +0.0866]",94.39999999999999
+Model 2b (+ Context),Baseline: Global Train Mean,Market_US,1.1381518654268916,"[-0.49, +2.74]",90.8,0.02626161029783769,"[-0.0746, +0.1354]",70.89999999999999
+Model 2b (+ Context),Baseline: Global Train Mean,Market_KR,-0.2979492512588777,"[-1.55, +0.88]",30.599999999999998,0.02492633381845255,"[-0.0479, +0.0883]",74.5
+Model 2b (+ Context),Baseline: Global Train Mean,Market_VN,0.08913697822531219,"[-1.16, +1.34]",54.900000000000006,0.06690347814216935,"[+0.0007, +0.1211]",97.5
+Model 2b (+ Context),Baseline: Market Train Mean,Overall,0.27885437449044304,"[-0.51, +1.08]",75.4,0.03676112415133315,"[-0.0084, +0.0816]",93.60000000000001
+Model 2b (+ Context),Baseline: Market Train Mean,Market_US,0.40674991562746143,"[-1.16, +1.96]",71.5,0.016637240188879687,"[-0.0958, +0.1214]",63.3
+Model 2b (+ Context),Baseline: Market Train Mean,Market_KR,0.07660631918620808,"[-1.22, +1.21]",52.5,0.030065402835261934,"[-0.0426, +0.0973]",77.2
+Model 2b (+ Context),Baseline: Market Train Mean,Market_VN,0.34753974072837934,"[-0.76, +1.50]",73.0,0.06408330960738717,"[+0.0049, +0.1108]",97.89999999999999
+Model 3 (Full OLS),Baseline: Global Train Mean,Overall,0.6578985073116357,"[-0.28, +1.61]",91.4,0.035456760685177446,"[-0.0145, +0.0866]",91.7
+Model 3 (Full OLS),Baseline: Global Train Mean,Market_US,1.5234244061674076,"[-0.29, +3.24]",94.89999999999999,0.04084217942067414,"[-0.0744, +0.1576]",77.5
+Model 3 (Full OLS),Baseline: Global Train Mean,Market_KR,0.2458090268473967,"[-1.30, +1.61]",59.9,0.04194530435423094,"[-0.0469, +0.1217]",81.8
+Model 3 (Full OLS),Baseline: Global Train Mean,Market_VN,-0.1527609788426858,"[-1.34, +1.02]",39.4,0.024449186230818043,"[-0.0342, +0.0809]",77.60000000000001
+Model 3 (Full OLS),Baseline: Market Train Mean,Overall,0.5576271614780524,"[-0.29, +1.46]",89.5,0.03265297684933921,"[-0.0159, +0.0811]",89.9
+Model 3 (Full OLS),Baseline: Market Train Mean,Market_US,0.7920224563679774,"[-0.97, +2.50]",83.0,0.031217809311716138,"[-0.0851, +0.1447]",72.2
+Model 3 (Full OLS),Baseline: Market Train Mean,Market_KR,0.6203645972924825,"[-0.86, +1.90]",79.7,0.04708437337104032,"[-0.0415, +0.1313]",84.5
+Model 3 (Full OLS),Baseline: Market Train Mean,Market_VN,0.10564178366038135,"[-1.01, +1.24]",58.4,0.021629017696035868,"[-0.0311, +0.0748]",77.3
