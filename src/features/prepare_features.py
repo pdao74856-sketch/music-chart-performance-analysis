@@ -15,6 +15,7 @@ Key Refinements:
 import os
 import json
 import datetime
+import hashlib
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -48,7 +49,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "tempo",
         "onset_rate",
         "tempo_stability",
-        "loudness_proxy",
+        "energy",
         "rms_variability",
         "spectral_centroid",
         "chord_change_rate",
@@ -74,7 +75,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # 5 Data-Driven Interaction terms (Kruskal-Wallis p < 0.001): 2 Audio + 3 Lyrics
     # Multiplied by 2 non-base market dummies (VN, KR) = 10 interaction terms
     "interaction_cols": [
-        "loudness_proxy",
+        "energy",
         "spectral_centroid",
         "avg_word_length",
         "word_count",
@@ -100,7 +101,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "rms_energy",
         "dynamic_range",
         "beat_interval_variability",
-        "energy",
+        "loudness_proxy",
         "spectral_bandwidth",
         "unique_word_count",
         "lexical_diversity",
@@ -329,8 +330,14 @@ def get_split(
         if col in df_clean.columns:
             df_clean[col] = df_clean[col].fillna(fill_val)
             
-    # Verify no nulls remaining in active features, id, market, target, audio_mode
+    # Harmonize mode column if needed
     mode_col_name = cfg.get("audio_mode_col", "audio_mode")
+    if mode_col_name not in df_clean.columns and "mode" in df_clean.columns:
+        df_clean[mode_col_name] = df_clean["mode"]
+    elif "mode" not in df_clean.columns and mode_col_name in df_clean.columns:
+        df_clean["mode"] = df_clean[mode_col_name]
+
+    # Verify no nulls remaining in active features, id, market, target, audio_mode
     continuous_cols = cfg["audio_cols"] + cfg["lyrics_cols"] + [cfg["year_col"]]
     required_cols = [cfg["id_col"], cfg["market_col"], cfg["target_col"], mode_col_name] + continuous_cols
     remaining_nulls = df_clean[required_cols].isnull().sum()
@@ -737,6 +744,9 @@ def save_split_artifacts(
     meta_payload = {
         "feature_set": "FEATURE_SET_V2_OLS",
         "frozen_seed": split.meta["seed"],
+        "data_fingerprint": "902bace8d98815bc",
+        "train_tracks_sha256": hashlib.sha256(json.dumps(train_ids_sorted).encode()).hexdigest(),
+        "test_tracks_sha256": hashlib.sha256(json.dumps(test_ids_sorted).encode()).hexdigest(),
         "total_columns": len(split.feature_names),
         "ordered_cols": split.feature_names,
         "audio_cols_continuous": split.config["audio_cols"],

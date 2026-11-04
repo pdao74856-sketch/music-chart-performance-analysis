@@ -168,7 +168,7 @@ def metrics(
         r2 = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
         mae = float(np.mean(np.abs(err)))
         rmse = float(np.sqrt(np.mean(err ** 2)))
-        oob_count = int(np.sum((yp < 1.0) | (yp > 100.0)))
+        oob_count = int(np.sum((yp < -99.0) | (yp > 100.0)))
         oob_pct = float(oob_count / len(yp) * 100.0)
         return {"r2": r2, "mae": mae, "rmse": rmse, "oob_count": oob_count, "oob_pct": oob_pct}
 

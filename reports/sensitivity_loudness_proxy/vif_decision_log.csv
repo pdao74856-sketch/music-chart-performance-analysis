@@ -1,0 +1,3 @@
+step,dropped_feature,cluster,vif_before_drop,max_vif_after_drop,reason
+1,energy_std,"Cum 1 (energy <-> loudness_proxy, r = 0.9688)",18.9348,6.5013,"energy va loudness_proxy deu bat nguon tu RMS. Loai energy (RMS tho) de giu loudness_proxy (thang dBFS chuan theo sinh hoc thinh giac, it lech phai va phu hop sliders Tab 1 & Tab 2). VIF cua loudness_proxy tu giam ve 2.38."
+2,spectral_bandwidth_std,"Cum 2 (spectral_centroid <-> spectral_bandwidth, r = 0.9089)",6.5013,3.7637,spectral_centroid va spectral_bandwidth tuong quan manh do vat ly dai pho. Loai spectral_bandwidth de giu spectral_centroid dai dien do sang am sac (Brightness). VIF cua spectral_centroid tu giam ve 1.46. Toan bo 24 bien dat VIF < 3.77 (< 5.0).
