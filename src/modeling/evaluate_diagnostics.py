@@ -83,14 +83,14 @@ def generate_diagnostics():
 
     split = get_split(df=df, seed=43)
     n_train = len(split.raw_train)
+    n_train_tracks = split.raw_train["spotify_track_id"].nunique()
     n_test = len(split.raw_test)
     n_test_tracks = split.raw_test["spotify_track_id"].nunique()
-    print(f"Train split rows: {n_train} (expected 1,685)")
-    print(f"Test split rows:  {n_test} (expected 410)")
-    print(f"Test unique tracks: {n_test_tracks} (expected 382)")
+    print(f"Train split rows: {n_train} (expected 1,685) | Unique tracks: {n_train_tracks} (expected 1,527)")
+    print(f"Test split rows:  {n_test} (expected 410) | Unique tracks: {n_test_tracks} (expected 382)")
 
-    if n_train != 1685 or n_test != 410 or n_test_tracks != 382:
-        raise ValueError("Data split counts do not match project specification (1685 train, 410 test, 382 test tracks)!")
+    if n_train != 1685 or n_test != 410 or n_test_tracks != 382 or n_train_tracks != 1527:
+        raise ValueError("Data split counts do not match project specification (1685 train rows/1527 tracks, 410 test rows/382 tracks)!")
 
     cfg = split.config
     audio_cols_std = [f"{c}_std" for c in cfg["audio_cols"]] + ["mode"]
@@ -318,16 +318,16 @@ def generate_diagnostics():
     print(f"Số dòng bị loại ở Train (release_year < 1980): {dropped_train_rows} dòng (Train còn {len(raw_train_filtered)} dòng)")
     print(f"Số dòng bị loại ở Test: {dropped_test_rows} dòng (giữ nguyên toàn bộ {len(raw_test_intact)} dòng; số dòng < 1980 trong Test là {test_pre1980_count})")
 
-    # Fit new StandardScaler and compute new q01 on filtered Train
+    # Fit new StandardScaler strictly on filtered Train, keeping winsorize_year_q01 = 1979.84 (baseline)
     cfg_filtered = dict(cfg)
-    q01_filtered = float(raw_train_filtered[cfg_filtered["year_col"]].quantile(0.01))
-    cfg_filtered["winsorize_year_q01"] = q01_filtered
-    print(f"q01 release_year mới trên Train đã lọc: {q01_filtered:.4f} (gốc: {cfg.get('winsorize_year_q01', 'None'):.4f})")
+    q01_fixed = float(cfg.get("winsorize_year_q01", 1979.84))
+    cfg_filtered["winsorize_year_q01"] = q01_fixed
+    print(f"q01 release_year đang dùng (cố định từ Train đầy đủ): {q01_fixed:.4f}")
 
     raw_train_scaler_input = raw_train_filtered.copy()
     if "word_count" in raw_train_scaler_input.columns:
         raw_train_scaler_input["word_count"] = np.log1p(raw_train_scaler_input["word_count"].astype(float))
-    raw_train_scaler_input[cfg_filtered["year_col"]] = raw_train_scaler_input[cfg_filtered["year_col"]].clip(lower=q01_filtered)
+    raw_train_scaler_input[cfg_filtered["year_col"]] = raw_train_scaler_input[cfg_filtered["year_col"]].clip(lower=q01_fixed)
 
     continuous_cols = cfg_filtered["audio_cols"] + cfg_filtered["lyrics_cols"] + [cfg_filtered["year_col"]]
     scaler_filtered = StandardScaler()
@@ -362,7 +362,7 @@ def generate_diagnostics():
     mae_filt = float(ov_filt["MAE"])
     rmse_filt = float(ov_filt["RMSE"])
 
-    print(f"\n--- So sánh hiệu năng Test giữa M3 gốc và M3 lọc (loại release_year < 1980) ---")
+    print(f"\n--- So sánh hiệu năng Test giữa M3 gốc và M3 lọc (loại release_year < 1980, giữ q01={q01_fixed:.2f}) ---")
     print(f"M3 Gốc (baseline):  R² = 0.0340 | MAE = 29.78 | RMSE = 38.30")
     print(f"M3 Lọc (>= 1980):   R² = {r2_filt:.4f} | MAE = {mae_filt:.2f} | RMSE = {rmse_filt:.2f}")
     print(f"Chênh lệch (Lọc - Gốc): ΔR² = {r2_filt - 0.0340:+.4f} | ΔMAE = {mae_filt - 29.78:+.2f} | ΔRMSE = {rmse_filt - 38.30:+.2f}")
@@ -371,43 +371,47 @@ def generate_diagnostics():
     w_inter_filt = wald_block(res3_filtered, inter_cols_std)
     w_lyrics_filt = wald_block(res3_filtered, lyrics_cols_std)
 
-    print(f"\n--- Wald Tests on Filtered Model ---")
+    print(f"\n--- Wald Tests on Filtered Model (Fixed q01={q01_fixed:.2f}) ---")
     print(f"Interactions Block (10 DOF): p = {w_inter_filt['p_value']:.4f} (Chi2 = {w_inter_filt['statistic']:.4f}, gốc p = 0.0566 / ~0.057)")
     print(f"Lyrics Block (6 DOF):        p = {w_lyrics_filt['p_value']:.4f} (Chi2 = {w_lyrics_filt['statistic']:.4f}, gốc p = 0.0679 / ~0.068)")
 
     # Read baseline coefficients
     df_base_coefs = pd.read_csv(repo_root / "reports" / "model3_coefficients.csv")
     base_coef_map = dict(zip(df_base_coefs["feature"], df_base_coefs["coef"]))
+    base_bse_map = dict(zip(df_base_coefs["feature"], df_base_coefs["bse_cluster"]))
 
-    # Compare coefficients: find sign changes or magnitude changes > 50%
+    # Compare coefficients via delta_over_se = (coef_loc - coef_goc) / bse_cluster_goc
     comparison_records = []
     filtered_params = res3_filtered.params
 
     for feat in m3_cols:
         b_base = base_coef_map.get(feat, np.nan)
         b_filt = filtered_params.get(feat, np.nan)
+        bse_base = base_bse_map.get(feat, np.nan)
         
-        abs_diff = abs(b_filt - b_base)
+        delta_coef = b_filt - b_base
+        delta_over_se = delta_coef / bse_base if (pd.notnull(bse_base) and bse_base > 0) else np.nan
         sign_changed = (np.sign(b_base) != np.sign(b_filt)) and (b_base != 0) and (b_filt != 0)
-        
-        pct_change = abs(b_filt - b_base) / abs(b_base) * 100.0 if abs(b_base) > 1e-9 else np.nan
-        is_large_change = (pct_change > 50.0) or sign_changed
+        large_shift = abs(delta_over_se) > 1.0 if pd.notnull(delta_over_se) else False
+        is_flagged = large_shift or sign_changed
         
         comparison_records.append({
             "feature": feat,
-            "coef_baseline": b_base,
-            "coef_filtered": b_filt,
-            "abs_diff": abs_diff,
-            "pct_change": pct_change,
+            "coef_goc": b_base,
+            "coef_loc": b_filt,
+            "bse_cluster_goc": bse_base,
+            "delta_coef": delta_coef,
+            "delta_over_se": delta_over_se,
             "sign_changed": sign_changed,
-            "flagged_sensitivity": is_large_change,
+            "large_shift_over_1se": large_shift,
+            "flagged_sensitivity": is_flagged,
         })
 
     df_sensitivity = pd.DataFrame(comparison_records)
     df_flagged = df_sensitivity[df_sensitivity["flagged_sensitivity"]].copy().reset_index(drop=True)
 
-    print(f"\n--- Bảng các hệ số đổi dấu hoặc thay đổi > 50% so với M3 gốc ({len(df_flagged)} biến) ---")
-    print(df_flagged[["feature", "coef_baseline", "coef_filtered", "pct_change", "sign_changed"]].to_string(index=False))
+    print(f"\n--- Bảng các hệ số đổi dấu hoặc |delta_over_se| > 1 so với M3 gốc ({len(df_flagged)} biến) ---")
+    print(df_flagged[["feature", "coef_goc", "coef_loc", "bse_cluster_goc", "delta_over_se", "sign_changed", "large_shift_over_1se"]].to_string(index=False))
 
     sens_csv_path = out_dir / "sensitivity_pre1980.csv"
     safe_to_csv(df_sensitivity, sens_csv_path, index=False)
