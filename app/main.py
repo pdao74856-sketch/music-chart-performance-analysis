@@ -62,7 +62,7 @@ with st.sidebar:
     st.title("Thông Tin Dự Án")
     st.markdown("**Học phần:** ADY201m — Applied Data Analytics")
     st.markdown("**Đề tài:** Multimodal Hit Song Analysis")
-    st.markdown("**Quy mô mẫu:** 2,860 quan sát xếp hạng (1,912 bài hát độc bản qua 23 quý)")
+    st.markdown("**Quy mô mẫu:** 2,098 bản ghi phân tích sạch (1,912 bài hát độc bản qua 23 quý)")
 
     st.markdown("---")
     st.subheader("Trạng Thái Kết Nối")
@@ -70,7 +70,7 @@ with st.sidebar:
     if url and key:
         st.success(f"🟢 Supabase Connected\n({url[:22]}...)")
     else:
-        st.info("🟡 Chế độ Offline Local CSV\n(Đầy đủ 2,860 bản ghi)")
+        st.info("🟡 Chế độ Offline Local Cache\n(Đầy đủ 2,098 bản ghi sạch)")
 
     st.markdown("---")
     st.caption("© 2026 Nhóm Nghiên Cứu ADY201m — All Rights Reserved.")

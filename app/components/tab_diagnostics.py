@@ -108,29 +108,21 @@ def render_tab_diagnostics():
 
     with col2:
         st.markdown("#### 📈 Forest Plot Hệ số β (Model 3 Full OLS)")
-        forest_img_path = FIGURES_DIR / "forest_plot_beta.png"
+        forest_img_path = FIGURES_DIR / "forest_main.png"
+        forest_slopes_path = FIGURES_DIR / "forest_market_slopes.png"
         if forest_img_path.exists():
-            st.image(str(forest_img_path), caption="Model 3: Forest Plot các hệ số hồi quy β với 95% Confidence Interval", use_container_width=True)
+            st.image(str(forest_img_path), caption="Model 3: Main Effects Forest Plot (95% CI)", use_container_width=True)
+            if forest_slopes_path.exists():
+                st.image(str(forest_slopes_path), caption="Model 3: Market-Specific Slopes by Country (95% CI)", use_container_width=True)
         else:
-            # Fallback display if TV1 hasn't exported image yet
-            st.info("Biểu đồ Forest Plot từ Member 1 (Đang đồng bộ).")
-            st.markdown(
-                """
-                **Hệ số then chốt từ Mô hình OLS Tương tác:**
-                * $\\beta_{\\text{Energy} \\times \\text{KR}} = +3.82^*$ ($p < 0.05$): Năng lượng tăng thứ hạng tại Hàn Quốc.
-                * $\\beta_{\\text{Energy} \\times \\text{VN}} = -2.94^*$ ($p < 0.05$): Năng lượng giảm thứ hạng tại Việt Nam.
-                * $\\beta_{\\text{SpectralCentroid} \\times \\text{VN}} = -3.15^{**}$ ($p < 0.01$): Phổ âm chói gắt làm tụt hạng tại Việt Nam.
-                * $\\beta_{\\text{ReleaseYear}} = +1.85^{***}$ ($p < 0.001$): Bài hát mới phát hành có lợi thế điểm số cao hơn ca khúc cũ.
-                """
-            )
+            st.info("Chưa tìm thấy biểu đồ Forest Plot từ Member 1.")
 
     # 3. Econometric Trade-off Discussion
     st.subheader("3. Luận giải Khoa học: Đánh đổi giữa Diễn giải (OLS) và Độ chính xác (Random Forest)")
     st.markdown(
         """
-        > [!NOTE]
         > **Bài học Phương pháp luận Kinh tế lượng vs Máy học:**
-        > * **Model 3 (OLS Interaction):** Điểm mạnh tuyệt đối là **Tính Diễn Giải (Interpretability)** và suy diễn nhân quả/biên độ tác động (Ceteris Paribus). OLS cung cấp trực tiếp hệ số $\\beta$, cho biết việc tăng 1 độ lệch chuẩn năng lượng tác động chính xác bao nhiêu điểm thứ hạng tại từng thị trường.
-        > * **Model 4 (Random Forest):** Điểm mạnh là **Nắm bắt Phi tuyến & Điểm uốn bão hòa (Non-linear & Saturation)**. Nhờ cấu trúc phân nhánh cây quyết định, RF đạt $R^2 = 0.1001$ (vượt trội so với OLS $0.0521$), phản ánh đúng thực tế rằng năng lượng âm học chỉ phát huy tác dụng đến một ngưỡng nhất định trước khi bị bão hòa (Diminishing Returns).
+        > * **Model 3 (OLS Interaction):** Điểm mạnh tuyệt đối là **Tính Diễn Giải (Interpretability)** và suy diễn tác động biên (Ceteris Paribus). OLS cung cấp trực tiếp hệ số $\\beta$, cho biết việc tăng 1 độ lệch chuẩn năng lượng tác động chính xác bao nhiêu điểm thứ hạng tại từng thị trường.
+        > * **Model 4 (Random Forest):** Điểm mạnh là **Nắm bắt Phi tuyến & Điểm uốn bão hòa (Non-linear & Saturation)**. Nhờ cấu trúc phân nhánh cây quyết định, RF đạt $R^2 = 0.0686$ (vượt trội gấp đôi so với OLS $0.0345$ trên tập Test độc lập), phản ánh đúng thực tế rằng đặc trưng âm học và ca từ có tính phi tuyến và tương tác đa chiều.
         """
     )
