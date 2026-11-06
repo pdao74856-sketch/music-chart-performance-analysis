@@ -21,8 +21,9 @@ Nhiệm vụ của Thành viên 4 là thực hiện hai bài toán kiểm địn
 #### Bài test 1: Kiểm định Tầm quan trọng Hoán vị (Permutation Feature Importance)
 * **Giả thuyết $H_0$:** Hoán vị ngẫu nhiên giá trị của đặc trưng $X_j$ không làm tăng sai số dự báo MAE của Random Forest trên tập Test ($\Delta\text{MAE}_{X_j} \le 0$).
 * **Giả thuyết $H_1$:** Hoán vị ngẫu nhiên giá trị của đặc trưng $X_j$ làm tăng sai số dự báo MAE của Random Forest ($\Delta\text{MAE}_{X_j} > 0$).
-* **Tiêu chuẩn kiểm định bảo thủ:** Bác bỏ $H_0$ nếu mức tăng sai số trung bình qua các lượt hoán vị độc lập vượt trội khỏi nhiễu hoán vị:
+* **Tiêu chuẩn đánh giá bảo thủ để đánh giá mức độ vượt nhiễu:** Để đánh giá xem mức tăng sai số của một đặc trưng có thực sự tách biệt khỏi nhiễu hoán vị ngẫu nhiên hay không, báo cáo áp dụng quy tắc thực nghiệm bảo thủ:
   $$\mu(\Delta\text{MAE}_{X_j}) - 2 \cdot \sigma_{X_j} > 0$$
+  *Lưu ý:* Đây là tiêu chuẩn đánh giá bảo thủ thực nghiệm nhằm xếp hạng và diễn giải độ ổn định của PFI, không phải là một kiểm định suy luận thống kê giả thuyết có $p$-value chính thức.
 
 #### Bài test 2: Kiểm định Paired Bootstrap So sánh RF và OLS Model 3
 * **Giả thuyết $H_0$:** Random Forest không có sai số dự báo ngoài mẫu thấp hơn OLS Model 3:
@@ -220,7 +221,7 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 | **2** | `rms_variability` | Âm học (Động lực học) | **0.0665** | $\pm 0.0458$ | $-0.0251$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **3** | `spectral_bandwidth` | Âm học (Âm sắc) | **0.0657** | $\pm 0.0365$ | $-0.0073$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **4** | `avg_word_length` | Ca từ (Độ dài từ) | **0.0542** | $\pm 0.0683$ | $-0.0823$ | Không thỏa (Chưa tách khỏi nhiễu) |
-| **5** | `chroma_longest_pattern` | Âm học (Hài âm) | **0.0441** | $\pm 0.0251$ | $-0.0062$ | Không thỏa (Chưa tách khỏi nhiễu) |
+| **5** | `chroma_longest_pattern_duration` | Âm học (Hài âm) | **0.0441** | $\pm 0.0251$ | $-0.0062$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **6** | `energy` | Âm học (Năng lượng) | **0.0316** | $\pm 0.0195$ | $-0.0074$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **7** | `loudness_proxy` | Âm học (Cường độ âm) | **0.0205** | $\pm 0.0150$ | $-0.0095$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **8** | `punctuation_ratio` | Ca từ (Dấu câu) | **0.0138** | $\pm 0.0391$ | $-0.0643$ | Không thỏa (Chưa tách khỏi nhiễu) |
@@ -249,7 +250,7 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 | Phạm vi Mẫu (Scope) | Kích thước Mẫu ($N$) | Số Cụm Bài Hát (Tracks) | Tiêu chí Kiểm định (RF vs. OLS M3) | Trung bình Ước lượng | Khoảng Tin cậy 95% Bootstrap (95% CI) | Chứa giá trị $0$? | Kết luận Thống kê ($\alpha = 0.05$) |
 | :--- | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
 | **Toàn bộ Test (Overall)** | **410** | **382** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.6315$** pts<br>$+0.0335$ ($+3.35\%$) | **$[-0.6602, \, +1.9767]$**<br>$[-0.0377, \, +0.0997]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Mức giảm sai số của RF nằm trong biên độ nhiễu lấy mẫu ngoài mẫu toàn cầu. |
-| **Việt Nam (VN)** | **105** | **105** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+2.1521$** pts<br>$+0.1074$ ($+10.74\%$) | **$[-0.2832, \, +4.4728]$**<br>$[-0.0133, \, +0.2144]$ | **CÓ**<br>CÓ | Mức giảm sai số đạt $+2.15$ điểm MAE và $R^2$ tăng $+10.74\%$, tuy nhiên cận dưới của CI 95% vẫn tiếp giáp số 0 $\rightarrow$ Chưa bác bỏ $H_0$. |
+| **Việt Nam (VN)** | **105** | **105** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+2.1521$** pts<br>$+0.1074$ ($+10.74\%$) | **$[-0.2832, \, +4.4728]$**<br>$[-0.0133, \, +0.2144]$ | **CÓ**<br>CÓ | Mức giảm sai số đạt $+2.15$ điểm MAE và $R^2$ tăng $+10.74\%$, tuy nhiên khoảng tin cậy 95% vẫn chứa giá trị 0 nên chưa đủ bằng chứng bác bỏ $H_0$. |
 | **Hoa Kỳ (US)** | **165** | **165** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.5117$** pts<br>$+0.0011$ ($+0.11\%$) | **$[-1.9387, \, +3.0100]$**<br>$[-0.1580, \, +0.1436]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Hiệu năng dự báo của OLS và RF tại Mỹ là tương đương. |
 | **Hàn Quốc (KR)** | **140** | **140** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$-0.3687$** pts<br>$-0.0128$ ($-1.28\%$) | **$[-2.3154, \, +1.5649]$**<br>$[-0.1199, \, +0.0864]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. OLS nhỉnh hơn nhẹ nhưng khoảng tin cậy bao quanh 0. |
 
@@ -259,11 +260,11 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 
 ### 5.1. Ba Thông điệp Cốt lõi cho Bài Thuyết trình Báo cáo (Slide Highlights)
 1. **Quy luật Thống trị của Yếu tố Thời điểm Phát hành (Recency Effect):**
-   * Kết quả Permutation Importance trên tập Test khẳng định: **Chỉ duy nhất năm phát hành (`release_year`, mean importance = $3.462$, $\mu - 2\sigma = +2.302 > 0$) thỏa mãn tiêu chí vượt khỏi nhiễu hoán vị**. 
-   * Toàn bộ 9 đặc trưng âm học và ca từ còn lại đều có $\mu - 2\sigma < 0$, nghĩa là không có bất kỳ một thuộc tính âm thanh hay từ ngữ riêng lẻ nào tự thân quyết định thành công thương mại nếu tách rời khỏi bối cảnh thị trường và thời điểm ra mắt.
+   * Kết quả Permutation Importance trên tập Test khẳng định: **Chỉ duy nhất năm phát hành (`release_year`, mean importance = $3.462$, $\mu - 2\sigma = +2.302 > 0$) thỏa mãn tiêu chí bảo thủ vượt khỏi nhiễu hoán vị**. 
+   * Toàn bộ 9 đặc trưng âm học và ca từ còn lại đều có $\mu - 2\sigma < 0$, nghĩa là theo tiêu chí đánh giá bảo thủ này, chưa đủ bằng chứng để khẳng định bất kỳ một đặc trưng âm học hay ca từ riêng lẻ nào có mức importance tách biệt rõ rệt khỏi nhiễu hoán vị ngẫu nhiên trên tập Test ngoài mẫu.
 2. **Xu hướng Phi tuyến Riêng biệt tại Thị trường Âm nhạc Việt Nam:**
    * Trong khi ở Mỹ và Hàn Quốc, OLS và Random Forest cho kết quả tương đương, thì **tại Việt Nam, Random Forest ghi nhận mức tăng $R^2$ điểm mẫu từ $2.54\%$ lên $13.35\%$ (tăng $10.81$ điểm phần trăm)** và giảm MAE $2.15$ điểm. 
-   * Tuy nhiên, theo phân tích Stratified Paired Bootstrap khắt khe có phân cụm, khoảng tin cậy 95% của $\Delta\text{MAE}$ tại VN là $[-0.2832, \, +4.4728]$ và $\Delta R^2$ là $[-0.0133, \, +0.2144]$ vẫn tiếp giáp ngưỡng $0$. Do đó, về mặt học thuật, nhóm kết luận đây là **xu hướng phi tuyến mạnh mẽ mang tính gợi mở thực nghiệm trên mẫu quan sát**, cần thận trọng và không khái quát hóa quá mức.
+   * Tuy nhiên, theo phân tích Stratified Paired Bootstrap khắt khe có phân cụm, khoảng tin cậy 95% của $\Delta\text{MAE}$ tại VN là $[-0.2832, \, +4.4728]$ và $\Delta R^2$ là $[-0.0133, \, +0.2144]$ vẫn chứa giá trị $0$. Do đó, về mặt học thuật, nhóm kết luận đây là **xu hướng phi tuyến mạnh mẽ mang tính gợi mở thực nghiệm trên mẫu quan sát**, chưa thể khẳng định có ý nghĩa thống kê ở mức $\alpha = 0.05$.
 3. **Phối hợp Song hành Tuyến tính – Phi tuyến trên Web App (Streamlit Dual-Model Architecture):**
    * Đề tài đề xuất mô hình ứng dụng kết hợp: OLS Model 3 đảm nhiệm vai trò **giải thích kinh tế lượng (Inference & Interpretability)** với các hệ số kiểm định Wald và $p$-value chuẩn xác; trong khi Model 4 Random Forest đóng vai trò **công cụ mô phỏng dự báo phi tuyến (Real-time Non-linear Simulator)** phục vụ trực quan hóa trên Tab 2 và Tab 4 của ứng dụng Web.
 
