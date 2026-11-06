@@ -5,22 +5,23 @@ Author: Member 2 (Audio Features & Showcase Engineer)
 
 This script executes:
 1. Kruskal-Wallis H-test & Effect Size (eta^2) across 14 continuous Librosa DSP audio features by market (VN, US, KR).
-2. Physical correlation verification (Energy vs Loudness, Spectral Centroid vs Bandwidth).
-3. VIF Multicollinearity Test before and after applying Audio Feature Contract v2.
+   With rigorous input validation (group size >= 5, non-empty, finite checks) and n_valid-based eta^2.
+2. Physical correlation verification (Energy vs Loudness, Spectral Centroid vs Bandwidth) on true Train set.
+3. VIF Multicollinearity Test before and after applying Audio Feature Contract v2 on true Train set.
 """
 
 import sys
 from pathlib import Path
 from typing import Tuple, Dict, List, Any
 import numpy as np
-
-# Force UTF-8 stdout for Windows consoles
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
 import pandas as pd
 from scipy import stats
 import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+# Force UTF-8 stdout for Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Ensure repository root is on sys.path
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -32,9 +33,8 @@ from src.utils.supabase_client import load_clean_modeling_data
 
 
 def run_kruskal_wallis_tests(X_train: pd.DataFrame, audio_features: list) -> pd.DataFrame:
-    """Run Kruskal-Wallis H-test and compute eta^2 effect size on Train set."""
+    """Run Kruskal-Wallis H-test and compute eta^2 effect size on Train set with input validation."""
     records = []
-    N = len(X_train)
     k = 3  # 3 markets: US (base), VN, KR
 
     # Segment groups
@@ -51,8 +51,16 @@ def run_kruskal_wallis_tests(X_train: pd.DataFrame, audio_features: list) -> pd.
         g_us = X_train.loc[mask_us, col].dropna()
         g_kr = X_train.loc[mask_kr, col].dropna()
 
+        # Input validation: check minimum observations and finite values
+        for g_name, g in [("VN", g_vn), ("US", g_us), ("KR", g_kr)]:
+            if len(g) < 5:
+                raise ValueError(f"Nhóm {g_name} không đủ quan sát tối thiểu (N={len(g)} < 5)")
+            if not np.isfinite(g).all():
+                raise ValueError(f"Nhóm {g_name} chứa giá trị không hợp lệ (NaN hoặc Inf)")
+
+        n_valid = len(g_vn) + len(g_us) + len(g_kr)
         h_stat, p_val = stats.kruskal(g_vn, g_us, g_kr)
-        eta_sq = (h_stat - k + 1) / (N - k)
+        eta_sq = (h_stat - k + 1) / (n_valid - k)
         
         # Categorize effect size by Cohen / Field guidelines for eta^2
         if eta_sq < 0.01:
@@ -78,16 +86,14 @@ def run_kruskal_wallis_tests(X_train: pd.DataFrame, audio_features: list) -> pd.
     return df_kruskal
 
 
-def run_physical_correlation_checks(df_raw: pd.DataFrame, train_indices: pd.Index) -> dict:
-    """Verify acoustic physics relationships on training subset."""
-    df_tr = df_raw.loc[train_indices].copy()
-    
+def run_physical_correlation_checks(df_train_raw: pd.DataFrame) -> dict:
+    """Verify acoustic physics relationships on the true training subset."""
     # 1. Energy vs Loudness Proxy
-    r_linear = df_tr["energy"].corr(df_tr["loudness_proxy"])
-    r_log = np.log10(df_tr["energy"]).corr(df_tr["loudness_proxy"])
+    r_linear = df_train_raw["energy"].corr(df_train_raw["loudness_proxy"])
+    r_log = np.log10(df_train_raw["energy"]).corr(df_train_raw["loudness_proxy"])
     
     # 2. Spectral Centroid vs Spectral Bandwidth
-    r_spectral = df_tr["spectral_centroid"].corr(df_tr["spectral_bandwidth"])
+    r_spectral = df_train_raw["spectral_centroid"].corr(df_train_raw["spectral_bandwidth"])
     
     return {
         "r_energy_loudness_linear": float(r_linear),
@@ -96,10 +102,8 @@ def run_physical_correlation_checks(df_raw: pd.DataFrame, train_indices: pd.Inde
     }
 
 
-def run_vif_analysis(X_train: pd.DataFrame, df_raw: pd.DataFrame, train_indices: pd.Index) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Calculate VIF before and after applying Audio Contract v2."""
-    df_tr = df_raw.loc[train_indices].copy()
-    
+def run_vif_analysis(X_train: pd.DataFrame, df_train_raw: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Calculate VIF before and after applying Audio Contract v2 on the true training set."""
     # --- BEFORE: Initial design matrix with redundant acoustic variables ---
     # Standardize continuous variables
     cols_to_scale = [
@@ -111,11 +115,11 @@ def run_vif_analysis(X_train: pd.DataFrame, df_raw: pd.DataFrame, train_indices:
         "mfcc_longest_pattern_duration"
     ]
     
-    df_before = pd.DataFrame(index=df_tr.index)
+    df_before = pd.DataFrame(index=df_train_raw.index)
     for c in cols_to_scale:
-        if c in df_tr.columns:
-            s = df_tr[c].dropna()
-            df_before[f"{c}_std"] = (df_tr[c] - s.mean()) / s.std()
+        if c in df_train_raw.columns:
+            s = df_train_raw[c].dropna()
+            df_before[f"{c}_std"] = (df_train_raw[c] - s.mean()) / s.std()
             
     df_before = sm.add_constant(df_before)
     
@@ -152,7 +156,6 @@ def run_vif_analysis(X_train: pd.DataFrame, df_raw: pd.DataFrame, train_indices:
 
 
 if __name__ == "__main__":
-    from typing import Tuple
     print("=" * 75)
     print("EXECUTION TEST: MEMBER 2 AUDIO & MULTICOLLINEARITY DIAGNOSTICS")
     print("=" * 75)
@@ -162,6 +165,14 @@ if __name__ == "__main__":
     df_clean = load_clean_modeling_data()
     print(f"-> Train observations: N = {len(split.X_train):,}")
     print(f"-> Test observations:  N = {len(split.X_test):,}")
+
+    # Extract true Train subset from df_clean via unique track IDs (GroupShuffleSplit is by track)
+    train_track_ids = set(split.ids_train.unique())
+    df_train_raw = df_clean[df_clean["spotify_track_id"].isin(train_track_ids)].copy()
+    assert len(df_train_raw) == len(split.X_train), (
+        f"Mismatch in Train size: filtered {len(df_train_raw)} vs X_train {len(split.X_train)}"
+    )
+    print(f"-> True Train raw subset successfully extracted: N = {len(df_train_raw):,} rows (matches X_train)")
 
     audio_14_features = [
         "tempo", "onset_rate", "tempo_stability", "energy", "rms_variability",
@@ -175,13 +186,13 @@ if __name__ == "__main__":
     df_kruskal = run_kruskal_wallis_tests(split.X_train, audio_14_features)
     print(df_kruskal.to_string(index=False))
 
-    print("\n[Step 3] Verifying Physical Acoustic Correlations...")
-    corr_results = run_physical_correlation_checks(df_clean, split.ids_train.index)
+    print("\n[Step 3] Verifying Physical Acoustic Correlations on True Train Set...")
+    corr_results = run_physical_correlation_checks(df_train_raw)
     for k, v in corr_results.items():
         print(f"-> {k}: {v:.6f}")
 
-    print("\n[Step 4] Executing VIF Multicollinearity Analysis (Before vs After)...")
-    df_vif_before, df_vif_after = run_vif_analysis(split.X_train, df_clean, split.ids_train.index)
+    print("\n[Step 4] Executing VIF Multicollinearity Analysis on True Train Set (Before vs After)...")
+    df_vif_before, df_vif_after = run_vif_analysis(split.X_train, df_train_raw)
     print("\n--- Top VIF Before Drop (Redundant Features) ---")
     print(df_vif_before.head(6).to_string(index=False))
 

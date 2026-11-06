@@ -30,7 +30,7 @@ Báo cáo kiểm định độc lập này giải quyết hai bài toán phươn
   * **$H_0$:** Không có hiện tượng đa cộng tuyến nghiêm trọng giữa các biến âm học giải thích ($VIF_j < 5.0, \forall j$).
   * **$H_1$:** Tồn tại đa cộng tuyến nghiêm trọng ($VIF_j \ge 5.0$), làm ma trận hiệp phương sai $(X^TX)^{-1}$ tiệm cận suy biến, thổi phồng sai số chuẩn $SE(\hat{\beta})$ và đảo ngược dấu tác động thực tế.
 * **Bản chất vật lý của sự trùng lặp tín hiệu số:**
-  1. *Cụm Năng lượng — Âm lượng:* $\text{Loudness} \approx 20 \log_{10}(\text{RMS})$. Mối quan hệ giữa `energy` (biên độ RMS) và `loudness_proxy` (dBFS) là hàm số toán học tất định: tương quan tuyến tính $r = 0.973$ và tương quan logarit $r = 1.000$. Đưa cả hai vào OLS khiến VIF bùng nổ lên $19.69 - 20.96 \gg 5.0$.
+  1. *Cụm Năng lượng — Âm lượng:* $\text{Loudness} \approx 20 \log_{10}(\text{RMS})$. Mối quan hệ giữa `energy` (biên độ RMS) và `loudness_proxy` (dBFS) là hàm số toán học tất định: tương quan tuyến tính $r = 0.969$ và tương quan logarit $r = 1.000$. Đưa cả hai vào OLS khiến VIF bùng nổ lên $19.69 - 20.96 \gg 5.0$.
   2. *Cụm Phổ tần âm sắc:* `spectral_centroid` (trọng tâm phổ) và `spectral_bandwidth` (độ rộng phổ) có tương quan vật lý $r = 0.908$, đẩy VIF lên $6.26 > 5.0$.
 * **Quy tắc kỹ thuật Audio Contract v2:**
   * Mô hình OLS bắt buộc chỉ sử dụng `energy_std` (chuẩn hóa RMS), **nghiêm cấm** đưa `loudness_proxy` vào ma trận hồi quy (`forbidden_cols`). `loudness_proxy` chỉ được giữ lại cho Random Forest và làm thanh trượt trên giao diện Web App.
@@ -162,35 +162,35 @@ Dưới đây là toàn bộ kết quả thực nghiệm, nơi biểu đồ minh
 
 #### Biểu đồ minh họa 3: Ma trận Tương quan Ban đầu & Vùng Cảnh báo Đa cộng tuyến
 ![Correlation Heatmap Initial](../../reports/figures/correlation_heatmap_train_initial.png)  
-*Hình 3: Ma trận tương quan Pearson ban đầu trên tập Train ($N = 1,685$). Vùng màu đỏ sẫm tại góc trên bên trái thể hiện tương quan cực đoan giữa `energy` $\leftrightarrow$ `loudness_proxy` ($r = 0.973$) và `spectral_centroid` $\leftrightarrow$ `spectral_bandwidth` ($r = 0.908$).*
+*Hình 3: Ma trận tương quan Pearson ban đầu trên tập Train ($N = 1,685$). Vùng màu đỏ sẫm tại góc trên bên trái thể hiện tương quan cực đoan giữa `energy` $\leftrightarrow$ `loudness_proxy` ($r = 0.969$) và `spectral_centroid` $\leftrightarrow$ `spectral_bandwidth` ($r = 0.908$).*
 
 #### Bảng số liệu cốt lõi: Kiểm toán VIF Trước vs Sau Audio Contract v2
 
 | Đặc Trưng Âm Học (`feature`) | VIF Trước Xử Lý (Trùng lặp vật lý) | Quyết Định Xử Lý Theo Audio Contract v2 | VIF Sau Xử Lý (Model 1 OLS Baseline) | Trạng Thái Ma Trận Hiệp Phương Sai |
 | :--- | :---: | :--- | :---: | :---: |
-| `loudness_proxy_std` | **20.96** | **CẤM đưa vào OLS** (Đưa vào `forbidden_cols`, chỉ giữ cho RF & Slider) | — | Triệt tiêu bùng nổ phương sai |
-| `energy_std` | **19.69** | **GIỮ LẠI CHO OLS** (Đại diện động năng chuẩn hóa RMS) | **2.0914** | **An toàn tuyệt đối ($< 5.0$)** |
-| `spectral_bandwidth_std` | **6.26** | **LOẠI BỎ** (Do cộng tuyến $r = 0.908$ với `spectral_centroid`) | — | Loại bỏ cộng tuyến dải phổ |
-| `spectral_centroid_std` | **5.97** | **GIỮ LẠI CHO OLS** (Đại diện độ sáng âm sắc Brightness) | **1.2943** | **An toàn tuyệt đối ($< 5.0$)** |
-| `chroma_longest_pattern_duration_std` | 2.96 | Giữ nguyên (RQA Giai điệu) | **2.7336** | Điểm VIF cao nhất ma trận âm học |
-| `mfcc_longest_pattern_duration_std` | 2.52 | Giữ nguyên (RQA Âm sắc) | **2.4183** | An toàn |
-| `tempo_std` | 2.27 | Giữ nguyên (Nhịp điệu) | **2.1869** | An toàn |
-| `chord_change_rate_std` | 2.11 | Giữ nguyên (Hòa âm) | **2.0530** | An toàn |
-| `rms_variability_std` | 2.14 | Giữ nguyên (Độ lệch chuẩn RMS) | **2.0170** | An toàn |
-| `mode` | 1.20 | Giữ nguyên (Điệu thức nhị phân $\{0, 1\}$) | **1.1875** | An toàn |
+| `loudness_proxy_std` | **18.20** | **CẤM đưa vào OLS** (Đưa vào `forbidden_cols`, chỉ giữ cho RF & Slider) | — | Triệt tiêu bùng nổ phương sai |
+| `energy_std` | **17.39** | **GIỮ LẠI CHO OLS** (Đại diện động năng chuẩn hóa RMS) | **2.0914** | **An toàn tuyệt đối ($< 5.0$)** |
+| `spectral_bandwidth_std` | **6.32** | **LOẠI BỎ** (Do cộng tuyến $r = 0.908$ với `spectral_centroid`) | — | Loại bỏ cộng tuyến dải phổ |
+| `spectral_centroid_std` | **6.02** | **GIỮ LẠI CHO OLS** (Đại diện độ sáng âm sắc Brightness) | **1.2943** | **An toàn tuyệt đối ($< 5.0$)** |
+| `chroma_longest_pattern_duration_std` | 2.73 | Giữ nguyên (RQA Giai điệu) | **2.7336** | Điểm VIF cao nhất ma trận âm học |
+| `mfcc_longest_pattern_duration_std` | 2.42 | Giữ nguyên (RQA Âm sắc) | **2.4183** | An toàn |
+| `tempo_std` | 2.19 | Giữ nguyên (Nhịp điệu) | **2.1869** | An toàn |
+| `chord_change_rate_std` | 2.05 | Giữ nguyên (Hòa âm) | **2.0530** | An toàn |
+| `rms_variability_std` | 2.02 | Giữ nguyên (Độ lệch chuẩn RMS) | **2.0170** | An toàn |
+| `mode` | 1.19 | Giữ nguyên (Điệu thức nhị phân $\{0, 1\}$) | **1.1875** | An toàn |
 
 #### Luận giải bản chất toán học & Giải pháp kỹ thuật Audio Contract v2:
 1. **Quan hệ hàm số tất định giữa Energy và Loudness:**
    * Trong vật lý âm học, mức áp suất âm thanh tính bằng decibel được định nghĩa qua điện áp hiệu dụng RMS:
      $$\text{Loudness (dBFS)} \approx 20 \log_{10}(\text{RMS}) = 20 \log_{10}(\text{Energy})$$
-   * Thực nghiệm trên tập dữ liệu đóng băng xác nhận: Tương quan tuyến tính đạt $r = 0.9728$, và tương quan giữa $\log_{10}(\text{energy})$ với $\text{loudness\_proxy}$ đạt **chính xác $r = 1.000000$**.
-   * *Hậu quả nếu phạm sai lầm mô hình hóa:* Nếu cố tình giữ cả hai biến vào ma trận hồi quy OLS, hệ số phóng đại phương sai bùng nổ lên $VIF = 20.96 \gg 5.0$. Hiện tượng này làm cho định thức ma trận $X^TX$ tiến sát về 0, nghịch đảo ma trận $(X^TX)^{-1}$ không ổn định số học, khiến sai số chuẩn $SE(\hat{\beta})$ bị thổi phồng giả tạo và dấu của các hệ số hồi quy bị đảo lộn ngẫu nhiên.
+   * Thực nghiệm trên tập dữ liệu đóng băng xác nhận: Tương quan tuyến tính đạt $r = 0.9689$, và tương quan giữa $\log_{10}(\text{energy})$ với $\text{loudness\_proxy}$ đạt **chính xác $r = 1.000000$**.
+   * *Hậu quả nếu phạm sai lầm mô hình hóa:* Nếu cố tình giữ cả hai biến vào ma trận hồi quy OLS, hệ số phóng đại phương sai bùng nổ lên $VIF = 18.20 (và 17.39 cho Energy) \gg 5.0$. Hiện tượng này làm cho định thức ma trận $X^TX$ tiến sát về 0, nghịch đảo ma trận $(X^TX)^{-1}$ không ổn định số học, khiến sai số chuẩn $SE(\hat{\beta})$ bị thổi phồng giả tạo và dấu của các hệ số hồi quy bị đảo lộn ngẫu nhiên.
 2. **Audio Contract v2 bảo vệ toàn diện ma trận ước lượng:**
    * Phân hệ Âm học đã thiết lập hợp đồng kỹ thuật nghiêm ngặt:
      * Cấm triệt để `loudness_proxy` khỏi danh sách biến độc lập của OLS (`forbidden_cols`).
      * Sử dụng biến chuẩn hóa `energy_std` làm đại diện duy nhất cho năng lượng sóng âm.
      * Loại bỏ `spectral_bandwidth_std` do cộng tuyến $r = 0.908$ với `spectral_centroid_std`.
-   * **Kết quả kiểm toán sau xử lý:** VIF của `energy_std` giảm từ $19.69$ xuống **$2.0914$**. Biến âm học có VIF cao nhất trong toàn bộ ma trận Model 1 chỉ là `chroma_longest_pattern_duration_std` với **$VIF = 2.7336 \ll 5.0$** (ngay cả trong Model 3 Full OLS, biến cao nhất cũng chỉ là $2.73$). Ma trận hoàn toàn sạch đa cộng tuyến, bảo vệ tính hợp lệ cho toàn bộ ước lượng kinh tế lượng của TV1.
+   * **Kết quả kiểm toán sau xử lý:** VIF của `energy_std` giảm từ $17.39$ xuống **$2.0914$**. Biến âm học có VIF cao nhất trong toàn bộ ma trận Model 1 chỉ là `chroma_longest_pattern_duration_std` với **$VIF = 2.7336 \ll 5.0$** (ngay cả trong Model 3 Full OLS, biến cao nhất cũng chỉ là $2.73$). Ma trận hoàn toàn sạch đa cộng tuyến, bảo vệ tính hợp lệ cho toàn bộ ước lượng kinh tế lượng của TV1.
 
 ---
 
@@ -228,7 +228,7 @@ Bên cạnh việc bảo đảm chuẩn mực thống kê, các kết quả ki�
 
 ### 5.1. 3 Gạch Đầu Dòng Đúc Kết Dành Cho Slide Nhóm (Khung Thuyết Trình 2 Phút của TV2)
 * **Dị biệt mẫu âm học cực mạnh ($p < 0.001$):** Kiểm định Kruskal-Wallis xác nhận K-Pop vượt trội hoàn toàn về Năng lượng ($H = 139.41, \eta^2 = 0.082$) và Độ sáng phổ Treble ($H = 127.65, \eta^2 = 0.075$) do kỹ thuật nén mastering hiện đại; Pop Hoa Kỳ dẫn đầu về Mật độ nốt gõ Onset ($p < 0.001$); trong khi V-Pop bảo toàn Dải động học tự nhiên ($p < 0.001$). Trái lại, Tempo đồng nhất toàn cầu quanh hằng số sinh học 120 BPM ($H = 3.32, p = 0.190$).
-* **Audio Contract v2 triệt tiêu đa cộng tuyến vật lý:** Nhóm phát hiện tương quan tất định giữa Energy và Loudness ($r = 1.0$ trên thang log, đẩy VIF lên 19.69). Nhóm kiên quyết **cấm đưa Loudness vào OLS** và loại bỏ Spectral Bandwidth, đưa VIF của Energy về **2.09** và toàn bộ ma trận về **$\le 2.73 \ll 5.0$**, bảo toàn tính khả nghịch $(X^TX)^{-1}$ và danh dự khoa học cho mô hình OLS.
+* **Audio Contract v2 triệt tiêu đa cộng tuyến vật lý:** Nhóm phát hiện tương quan tất định giữa Energy và Loudness ($r = 1.0$ trên thang log, đẩy VIF lên 18.20). Nhóm kiên quyết **cấm đưa Loudness vào OLS** và loại bỏ Spectral Bandwidth, đưa VIF của Energy về **2.09** và toàn bộ ma trận về **$\le 2.73 \ll 5.0$**, bảo toàn tính khả nghịch $(X^TX)^{-1}$ và danh dự khoa học cho mô hình OLS.
 * **Bảo toàn tính trung thực — Không ngụy biện nhân quả:** Sự khác biệt phân phối biên $P(X \mid \text{Market})$ chỉ mô tả đặc tính mẫu phân tầng của các ca khúc lọt chart, không đồng nghĩa với việc cứ tăng năng lượng là bài hát sẽ thành hit. Đây là tiền đề kinh tế lượng chuẩn xác để chuyển giao cho TV1 kiểm định các số hạng tương tác thị trường.
 
 ### 5.2. Chuyển Giao Mạch Thuyết Trình Sang Thành Viên 3 (Lyrics Lead)
