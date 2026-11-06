@@ -96,6 +96,8 @@ def _load_audio_safely(
 
     if isinstance(audio_source, (bytes, bytearray)):
         size_bytes = len(audio_source)
+        if size_bytes == 0:
+            raise ValueError("Tệp âm thanh trống (0 bytes).")
         if size_bytes > MAX_FILE_SIZE_BYTES:
             size_mb = size_bytes / (1024 * 1024)
             raise ValueError(f"Dung lượng tệp ({size_mb:.1f}MB) vượt quá giới hạn tối đa 15MB.")
@@ -105,6 +107,8 @@ def _load_audio_safely(
         audio_source.seek(0, 2)
         size_bytes = audio_source.tell()
         audio_source.seek(0)
+        if size_bytes == 0:
+            raise ValueError("Tệp âm thanh trống (0 bytes).")
         if size_bytes > MAX_FILE_SIZE_BYTES:
             size_mb = size_bytes / (1024 * 1024)
             raise ValueError(f"Dung lượng tệp ({size_mb:.1f}MB) vượt quá giới hạn tối đa 15MB.")
@@ -115,6 +119,8 @@ def _load_audio_safely(
         if not path.exists():
             raise FileNotFoundError(f"Không tìm thấy tệp âm thanh: {path}")
         size_bytes = path.stat().st_size
+        if size_bytes == 0:
+            raise ValueError("Tệp âm thanh trống (0 bytes).")
         if size_bytes > MAX_FILE_SIZE_BYTES:
             size_mb = size_bytes / (1024 * 1024)
             raise ValueError(f"Dung lượng tệp ({size_mb:.1f}MB) vượt quá giới hạn tối đa 15MB.")
@@ -128,9 +134,12 @@ def _load_audio_safely(
         y, sr = sf.read(file_obj)
     except Exception:
         # Fallback to librosa if soundfile encounters uncommon containers
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            y, sr = librosa.load(file_obj, sr=None, mono=False)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                y, sr = librosa.load(file_obj, sr=None, mono=False)
+        except Exception as e:
+            raise ValueError(f"Không thể giải mã tệp âm thanh (định dạng không hỗ trợ hoặc tệp bị hỏng): {e}") from None
 
     # Convert to mono if stereo/multichannel
     if y.ndim > 1:
@@ -425,26 +434,26 @@ def extract_features_for_inference(
     mfcc_det, mfcc_mean_p, mfcc_longest_p = _compute_rqa_metrics(mfcc_norm)
 
     return {
-        # Core 17 Librosa features
-        "tempo": round(tempo, 2),
-        "onset_rate": round(onset_rate, 2),
-        "tempo_stability": round(tempo_stability, 6),
-        "energy": round(energy, 6),
-        "rms_variability": round(rms_variability, 6),
-        "loudness_proxy": round(loudness_proxy, 2),
-        "spectral_centroid": round(spectral_centroid, 2),
-        "spectral_bandwidth": round(spectral_bandwidth, 2),
-        "chord_change_rate": round(chord_rate, 2),
-        "key_confidence": round(key_conf, 4),
+        # Core 17 Librosa features (raw full-precision floats for StandardScaler)
+        "tempo": float(tempo),
+        "onset_rate": float(onset_rate),
+        "tempo_stability": float(tempo_stability),
+        "energy": float(energy),
+        "rms_variability": float(rms_variability),
+        "loudness_proxy": float(loudness_proxy),
+        "spectral_centroid": float(spectral_centroid),
+        "spectral_bandwidth": float(spectral_bandwidth),
+        "chord_change_rate": float(chord_rate),
+        "key_confidence": float(key_conf),
         "mode": float(mode_val),
-        "chroma_repetition_determinism": round(chroma_det, 4),
-        "chroma_mean_pattern_duration": round(chroma_mean_p, 2),
-        "chroma_longest_pattern_duration": round(chroma_longest_p, 2),
-        "mfcc_repetition_determinism": round(mfcc_det, 4),
-        "mfcc_mean_pattern_duration": round(mfcc_mean_p, 2),
-        "mfcc_longest_pattern_duration": round(mfcc_longest_p, 2),
+        "chroma_repetition_determinism": float(chroma_det),
+        "chroma_mean_pattern_duration": float(chroma_mean_p),
+        "chroma_longest_pattern_duration": float(chroma_longest_p),
+        "mfcc_repetition_determinism": float(mfcc_det),
+        "mfcc_mean_pattern_duration": float(mfcc_mean_p),
+        "mfcc_longest_pattern_duration": float(mfcc_longest_p),
         # Extra diagnostic metadata
-        "duration_analyzed_seconds": round(duration_analyzed, 2),
+        "duration_analyzed_seconds": float(duration_analyzed),
         "key": key_str,
         "raw_mode": raw_mode,
         "filename": filename,
