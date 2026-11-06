@@ -1,0 +1,91 @@
+{
+  "source": "data/processed/modeling_dataset.csv",
+  "split_source": "models/train_track_ids.json",
+  "train_unique_tracks": 1527,
+  "train_rows": 2296,
+  "features": [
+    "word_count",
+    "repetition_ratio",
+    "avg_word_length",
+    "line_count",
+    "chorus_repetition_count",
+    "punctuation_ratio"
+  ],
+  "markets": {
+    "KR": {
+      "n_rows": 814,
+      "medians": {
+        "word_count": 321.5,
+        "repetition_ratio": 0.5973314356876,
+        "avg_word_length": 3.6531578610583795,
+        "line_count": 51.0,
+        "chorus_repetition_count": 1.0,
+        "punctuation_ratio": 0.0498145373971709
+      },
+      "valid_counts": {
+        "word_count": 814,
+        "repetition_ratio": 814,
+        "avg_word_length": 814,
+        "line_count": 814,
+        "chorus_repetition_count": 767,
+        "punctuation_ratio": 814
+      }
+    },
+    "US": {
+      "n_rows": 758,
+      "medians": {
+        "word_count": 358.0,
+        "repetition_ratio": 0.6294221698113207,
+        "avg_word_length": 3.830212664257488,
+        "line_count": 51.0,
+        "chorus_repetition_count": 1.0,
+        "punctuation_ratio": 0.047576082964946254
+      },
+      "valid_counts": {
+        "word_count": 758,
+        "repetition_ratio": 758,
+        "avg_word_length": 758,
+        "line_count": 758,
+        "chorus_repetition_count": 681,
+        "punctuation_ratio": 758
+      }
+    },
+    "VN": {
+      "n_rows": 724,
+      "medians": {
+        "word_count": 376.0,
+        "repetition_ratio": 0.6222999222999224,
+        "avg_word_length": 3.4371821211134215,
+        "line_count": 52.0,
+        "chorus_repetition_count": 1.0,
+        "punctuation_ratio": 0.03715803839068095
+      },
+      "valid_counts": {
+        "word_count": 724,
+        "repetition_ratio": 724,
+        "avg_word_length": 724,
+        "line_count": 724,
+        "chorus_repetition_count": 686,
+        "punctuation_ratio": 724
+      }
+    }
+  },
+  "test_unique_tracks": 382,
+  "observed": {
+    "total_rows": 2856,
+    "train_rows": 2296,
+    "test_rows": 560,
+    "train_market_rows": {
+      "KR": 814,
+      "US": 758,
+      "VN": 724
+    },
+    "test_market_rows": {
+      "KR": 203,
+      "US": 197,
+      "VN": 160
+    },
+    "fair_comparison_train_rows": 2296,
+    "fair_comparison_test_rows": 560
+  }
+}
