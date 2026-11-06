@@ -244,6 +244,8 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 | **Hoa Kỳ (US)** | **165** | **OLS Model 3**<br>**Random Forest (M4)** | $2.85\%$<br>**$3.12\%$** | $27.64$<br>**$27.13$** | $36.01$<br>**$35.96$** | $\Delta R^2 = +0.28$ điểm phần trăm<br>$\Delta\text{MAE} = +0.51$ điểm |
 | **Hàn Quốc (KR)** | **140** | **OLS Model 3**<br>**Random Forest (M4)** | **$3.84\%$**<br>$2.81\%$ | **$27.77$**<br>$28.09$ | **$36.00$**<br>$36.19$ | $\Delta R^2 = -1.03$ điểm phần trăm<br>$\Delta\text{MAE} = -0.32$ điểm (OLS tốt hơn nhẹ) |
 
+*Lưu ý: Các mức chênh lệch $\Delta R^2$ được tính từ giá trị chưa làm tròn; do đó, kết quả có thể chênh lệch nhẹ so với phép trừ trực tiếp các giá trị $R^2$ đã làm tròn trong bảng.*
+
 ---
 
 ### 4.3. Bảng Kiểm định Paired Cluster Bootstrap Phân Tầng ($B = 1,000$ iterations, seed=43)
@@ -263,7 +265,7 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 ### 5.1. Ba Thông điệp Cốt lõi cho Bài Thuyết trình Báo cáo (Slide Highlights)
 1. **Vai trò nổi bật của năm phát hành trong khả năng dự báo của Random Forest:**
    * Kết quả Permutation Feature Importance cho thấy `release_year` là đặc trưng có mức importance nổi bật nhất trong mô hình Random Forest ($\mu = 3.462$, $\mu - 2\sigma = +2.302 > 0$). Biến này là đặc trưng duy nhất vượt qua tiêu chí đánh giá bảo thủ.
-   * Kết quả phản ánh mức độ phụ thuộc dự báo của mô hình vào thông tin năm phát hành, không chứng minh quan hệ nhân quả giữa năm phát hành và thành công thương mại của bài hát. Tất cả 9 đặc trưng âm học và ca từ còn lại đều có $\mu - 2\sigma < 0$, cho thấy mức độ đóng góp đơn lẻ của từng đặc trưng chưa đủ để tách biệt rõ ràng khỏi nhiễu hoán vị trên tập Test.
+   * Kết quả phản ánh mức độ phụ thuộc dự báo của mô hình vào thông tin năm phát hành, không chứng minh quan hệ nhân quả giữa năm phát hành và thành công thương mại của bài hát. Tất cả 9 đặc trưng còn lại, bao gồm các biến âm học, ca từ và biến kiểm soát thị trường, đều có $\mu - 2\sigma < 0$, cho thấy mức độ đóng góp đơn lẻ của từng đặc trưng chưa đủ để tách biệt rõ ràng khỏi nhiễu hoán vị trên tập Test.
 2. **Tín hiệu cải thiện dự báo của Random Forest tại thị trường Việt Nam:**
    * Trên mẫu kiểm định Việt Nam, Random Forest ghi nhận mức tăng $R^2$ điểm mẫu từ $2.54\%$ lên $13.35\%$ ($+10.81$ điểm phần trăm) và giảm MAE khoảng $2.16$ điểm so với OLS Model 3.
    * Tuy nhiên, khoảng tin cậy Bootstrap 95% của cả $\Delta\text{MAE}$ ($[-0.2832, \, +4.4728]$) và $\Delta R^2$ ($[-0.0133, \, +0.2144]$) đều chứa giá trị $0$. Vì vậy, đây là kết quả mô tả mang tính gợi mở thực nghiệm, chưa đủ bằng chứng để kết luận Random Forest vượt trội có ý nghĩa thống kê tại thị trường Việt Nam.
