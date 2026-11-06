@@ -4,8 +4,6 @@
 **Học phần:** ADY201m – Phân tích Năng lực Cạnh tranh Bài hát trên Bảng xếp hạng Âm nhạc (Spotify Top 200 VN, US, KR)  
 **Tập dữ liệu:** Spotify Top 200 Weekly (2021–2026, theo thông tin trong bản báo cáo hiện tại), với \(N = 2,098\) bản ghi hoàn chỉnh và 1,912 ca khúc độc nhất. Tập Test gồm 410 quan sát. Tập huấn luyện Random Forest gồm 1,688 quan sát.
 
-> **Lưu ý về phạm vi thời gian:** Bản review TV1 đề nghị cập nhật phạm vi dữ liệu thành 2021–2026. Chưa có đủ bằng chứng trong các tệp đã đối chiếu để xác nhận năm kết thúc. Vì vậy, báo cáo tạm giữ 2021–2024 theo bản dữ liệu hiện có; cần xác minh ngày nhỏ nhất/lớn nhất trong dữ liệu nguồn trước khi đổi thành 2021–2026.
-
 ---
 
 ## 1. MỤC ĐÍCH & GIẢ THUYẾT THỐNG KÊ
