@@ -143,23 +143,20 @@ Biểu đồ đối chứng trực diện hệ số xác định ngoài mẫu ($
 
 ## 4. BẢNG KẾT QUẢ THỐNG KÊ CỐT LÕI
 
+
 ### 4.1. Bảng Tầm quan trọng Biến Hoán vị (Permutation Feature Importance) trên Test Set ($N = 410$)
-Đo lường mức tăng của Mean Absolute Error ($\Delta\text{MAE}$) khi xáo trộn từng biến:
 
-| Thứ hạng | Đặc trưng độc lập (Feature) | Nhóm biến | Mean Importance ($\Delta\text{MAE}$) | Std Deviation | Kết luận thống kê |
-| :---: | :--- | :--- | :---: | :---: | :--- |
-| **1** | `release_year` | Metadata / Thời gian | **3.462** | $\pm 0.580$ | Bác bỏ $H_0$ ($p < 0.001$). Biến quan trọng áp đảo toàn diện. |
-| **2** | `tempo` | Âm học (Audio) | **0.066** | $\pm 0.042$ | Đóng góp biên dương nhỏ nhưng ổn định. |
-| **3** | `danceability` | Âm học (Audio) | **0.054** | $\pm 0.038$ | Đóng góp biên tích cực. |
-| **4** | `energy` | Âm học (Audio) | **0.048** | $\pm 0.035$ | Tác động tương hỗ với nhịp điệu. |
-| **5** | `log_word_count` | Ca từ (Lyrics) | **0.039** | $\pm 0.027$ | Biến ca từ có sức giải thích cao nhất nhóm ca từ. |
-| **6** | `loudness_proxy` | Âm học (Audio) | **0.034** | $\pm 0.031$ | Đại diện cường độ âm thanh. |
-| **7** | `Market_VN` | Dummy Quốc gia | **0.031** | $\pm 0.025$ | Phản ánh dị biệt thị trường nội địa. |
-| **8** | `title_word_count` | Ca từ (Metadata) | **0.028** | $\pm 0.021$ | Độ dài tiêu đề bài hát. |
-| **9** | `chorus_ratio` | Ca từ (Cấu trúc) | **0.019** | $\pm 0.018$ | Tỷ trọng điệp khúc trong lời bài hát. |
-| **10** | `valence` | Âm học (Audio) | **0.015** | $\pm 0.014$ | Cảm xúc tích cực / tiêu cực của giai điệu. |
+Đo lường mức tăng của Mean Absolute Error ($\Delta\text{MAE}$) khi xáo trộn từng biến. Tên biến và điểm importance được đối chiếu với `reports/report5/rf_benchmark_metrics.json`.
 
-> **Nhận định then chốt 1**: Biến thời gian phát hành (`release_year`, importance = $3.462$) áp đảo hoàn toàn các đặc trưng kỹ thuật sản xuất âm nhạc (gấp $52.5$ lần biến âm học mạnh nhất là `tempo` $= 0.066$, và gấp $88.8$ lần biến ca từ mạnh nhất là `log_word_count` $= 0.039$). Điều này chứng minh hiệu ứng thời điểm phát hành (Recency & Freshness Effect) là yếu tố quyết định hàng đầu thứ hạng Spotify, lấn át thuộc tính nội dung thuần túy.
+| Thứ hạng | Đặc trưng độc lập (Feature) | Nhóm biến | Mean Importance ($\Delta\text{MAE}$) | Kết luận thống kê |
+| :---: | :--- | :--- | :---: | :--- |
+| **1** | `release_year` | Metadata / Thời gian | **3.462** | Biến quan trọng áp đảo toàn diện. |
+| **2** | `rms_variability` | Âm học (Audio) | **0.066** | Một trong hai biến có importance cao nhất trong nhóm đặc trưng còn lại. |
+| **3** | `spectral_bandwidth` | Âm học (Audio) | **0.066** | Một trong hai biến có importance cao nhất trong nhóm đặc trưng còn lại. |
+| **4** | `avg_word_length` | Ca từ (Lyrics / NLP) | **0.054** | Biến NLP có importance cao nhất. |
+| **5** | `chroma_longest_pattern_duration` | Âm học (Audio / RQA) | **0.044** | Đặc trưng thời lượng mẫu chroma dài nhất. |
+
+> **Nhận định then chốt 1:** Biến thời gian phát hành (`release_year`, importance = 3.462) có mức importance vượt trội so với các biến âm học và ca từ. Trong đó, `rms_variability` và `spectral_bandwidth` cùng đạt 0.066, `avg_word_length` đạt 0.054 và `chroma_longest_pattern_duration` đạt 0.044. Kết quả cho thấy yếu tố thời điểm phát hành có sức mạnh dự báo nổi bật trong mô hình Random Forest trên tập Test. Đây là mức độ quan trọng dự báo, không đồng nghĩa với quan hệ nhân quả.
 
 ---
 
@@ -185,14 +182,15 @@ Biểu đồ đối chứng trực diện hệ số xác định ngoài mẫu ($
 
 ## 5. KẾT LUẬN & ĐIỂM NHẤN ĐƯA LÊN SLIDE THUYẾT TRÌNH
 
-### 5.1. Ba Thông điệp Cốt lõi cho Bài Thuyết trình Báo cáo (Slide Highlights)
-1. **Quy luật "Nội dung chỉ là điều kiện cần – Thời điểm và Thị trường mới là điều kiện đủ":**
-   * Kết quả Permutation Importance trên tập Test chứng minh rằng năm phát hành (`release_year`, score = $3.462$) chi phối dự báo gấp **$50 - 90$ lần** so với bất kỳ chỉ số âm thanh (`tempo` $0.066$) hay ca từ (`log_word_count` $0.039$) nào. Một bài hát có giai điệu bắt tai hay ca từ chau chuốt nhưng ra mắt lệch pha thị hiếu hoặc không duy trì được hiệu ứng phát hành sẽ khó trụ vững trên bảng xếp hạng.
-2. **Tính Phi tuyến Mạnh mẽ Riêng biệt tại Thị trường Âm nhạc Việt Nam:**
-   * Trong khi ở Mỹ và Hàn Quốc, Random Forest và OLS cho năng lực dự báo tương đương (khoảng tin cậy $95\%$ của Paired Bootstrap toàn cầu chứa số $0$), thì **tại Việt Nam, Random Forest tạo bước nhảy vọt**: $R^2$ tăng vọt từ $2.54\%$ (OLS) lên **$13.35\%$** (gấp hơn $5$ lần), sai số MAE giảm rõ rệt $2.16$ điểm.
-   * **Hàm ý bản chất:** Thị hiếu khán giả đại chúng Việt Nam có tính phân cực và ngưỡng bão hòa phi tuyến rất gắt (ví dụ: các ngưỡng tempo sôi động hoặc bài hát có độ bắt tai đột biến), điều mà các mô hình hồi quy tuyến tính không thể nắm bắt được.
-3. **Giá trị Ứng dụng Thực tiễn trên Giao diện Web App (Streamlit Dual-Model Simulator):**
-   * Hệ thống ứng dụng web triển khai song song cả hai góc nhìn: OLS cung cấp góc nhìn **Giải thích học thuật (Interpretability)** thông qua hệ số góc kinh tế lượng và $p$-value; Random Forest đóng vai trò **Dự báo mô phỏng phi tuyến (Non-linear Simulation Engine)** giúp các nhà sản xuất âm nhạc thử nghiệm tương tác thuộc tính bài hát theo thời gian thực (Tab 2 Simulator & Tab 4 Diagnostics).
+
+### 5.1. Kết luận về Permutation Feature Importance
+
+Kết quả phân tích Permutation Feature Importance cho thấy `release_year` là biến có mức độ đóng góp vào khả năng dự báo nổi bật nhất, với Mean Importance đạt **3.462**. Giá trị này cao hơn khoảng **52.5 lần** so với `rms_variability` (0.066) và khoảng **64.1 lần** so với `avg_word_length` (0.054).
+
+Trong nhóm đặc trưng âm học, `rms_variability` và `spectral_bandwidth` cùng đạt mức importance 0.066, trong khi `chroma_longest_pattern_duration` đạt 0.044. Đối với nhóm đặc trưng ca từ, `avg_word_length` đạt 0.054, cho thấy các đặc trưng ngôn ngữ cũng đóng góp vào khả năng dự báo của mô hình.
+
+Nhìn chung, kết quả cho thấy yếu tố thời điểm phát hành có vai trò nổi bật trong việc dự đoán hiệu suất bài hát trên bảng xếp hạng. Tuy nhiên, cần lưu ý rằng Permutation Feature Importance chỉ phản ánh mức độ ảnh hưởng của từng biến đến hiệu suất dự báo của mô hình trên tập kiểm tra, không chứng minh mối quan hệ nhân quả giữa các biến và hiệu suất bài hát.
+
 
 ---
 *Tài liệu kiểm định được chuẩn hóa phục vụ Nghiệm thu Checkpoint 2 và Báo cáo Đồ án Cuối kỳ ADY201m.*
