@@ -36,6 +36,8 @@ import seaborn as sns
 import joblib
 
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import GroupKFold, GridSearchCV
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 from sklearn.inspection import permutation_importance
@@ -109,7 +111,7 @@ def load_dataset() -> pd.DataFrame:
 
 
 def preprocess_rf_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Preprocesses features for Random Forest without standardization."""
+    """Preprocesses features for Random Forest without standardization or target-data leakage."""
     df_proc = df.copy()
 
     # 1. Mode column harmonization (Major=1.0, Minor=0.0)
@@ -128,14 +130,9 @@ def preprocess_rf_features(df: pd.DataFrame) -> pd.DataFrame:
         df_proc["Market_VN"] = (mkt_upper == "VN").astype(float)
         df_proc["Market_KR"] = (mkt_upper == "KR").astype(float)
 
-    # 4. Fill missing values (chorus_repetition_count with 0, others with median)
+    # 4. Domain-specific structural fill (chorus_repetition_count with 0 for songs without detected chorus)
     if "chorus_repetition_count" in df_proc.columns:
         df_proc["chorus_repetition_count"] = df_proc["chorus_repetition_count"].fillna(0.0)
-
-    for col in RF_ALL_FEATURES:
-        if col in df_proc.columns and df_proc[col].isnull().any():
-            median_val = float(df_proc[col].dropna().median())
-            df_proc[col] = df_proc[col].fillna(median_val)
 
     return df_proc
 
@@ -170,19 +167,22 @@ def train_and_evaluate_rf():
     X_test = df_test[RF_ALL_FEATURES]
     y_test = df_test["chart_score"].astype(float)
 
-    # 3. 5-fold GroupKFold Cross-Validation on Train set
-    print("\n[TrainModel4] Running GridSearchCV with 5-fold GroupKFold...")
+    # 3. 5-fold GroupKFold Cross-Validation on Train set using Leak-Free Pipeline
+    print("\n[TrainModel4] Running GridSearchCV with 5-fold GroupKFold and Leak-free Pipeline...")
     gkf = GroupKFold(n_splits=5)
     cv_splits = list(gkf.split(X_train, y_train, groups=groups_train))
     param_grid = {
-        "max_depth": [6, 8, 10],
-        "min_samples_leaf": [2, 5],
-        "n_estimators": [150],
+        "rf__max_depth": [6, 8, 10],
+        "rf__min_samples_leaf": [2, 5],
+        "rf__n_estimators": [150],
     }
 
-    rf_base = RandomForestRegressor(random_state=42, n_jobs=-1)
+    base_pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("rf", RandomForestRegressor(random_state=42, n_jobs=-1)),
+    ])
     grid_search = GridSearchCV(
-        estimator=rf_base,
+        estimator=base_pipe,
         param_grid=param_grid,
         cv=cv_splits,
         scoring="neg_mean_absolute_error",
@@ -191,14 +191,15 @@ def train_and_evaluate_rf():
     )
     grid_search.fit(X_train, y_train)
 
-    best_rf: RandomForestRegressor = grid_search.best_estimator_
-    best_params = grid_search.best_params_
+    best_pipeline: Pipeline = grid_search.best_estimator_
+    best_rf: RandomForestRegressor = best_pipeline.named_steps["rf"]
+    best_params = {k.replace("rf__", ""): v for k, v in grid_search.best_params_.items()}
     best_cv_mae = -grid_search.best_score_
     print(f"\n[TrainModel4] Best Hyperparameters: {best_params}")
     print(f"[TrainModel4] Best CV MAE: {best_cv_mae:.2f} points")
 
     # 4. Evaluation on Test Set (Overall & Broken Down by Market)
-    y_pred_test = best_rf.predict(X_test)
+    y_pred_test = best_pipeline.predict(X_test)
 
     mae_overall = float(mean_absolute_error(y_test, y_pred_test))
     rmse_overall = float(root_mean_squared_error(y_test, y_pred_test))
@@ -228,9 +229,10 @@ def train_and_evaluate_rf():
             print(f"Market {m} (N={mask_m.sum()}): MAE={mae_m:.2f}, RMSE={rmse_m:.2f}, R²={r2_m:.4f}")
 
     # 5. Permutation Feature Importance on Test Set
+    # Note: Evaluated on best_pipeline (row-wise test permutation importance)
     print("\n[TrainModel4] Computing Permutation Importance on Test Set...")
     perm_result = permutation_importance(
-        best_rf, X_test, y_test,
+        best_pipeline, X_test, y_test,
         n_repeats=10,
         random_state=42,
         scoring="neg_mean_absolute_error",
@@ -266,10 +268,10 @@ def train_and_evaluate_rf():
     plt.close()
     print(f"[TrainModel4] Saved Permutation Importance plot to {plot_path.relative_to(ROOT_DIR)}")
 
-    # 6. Save Model Pipeline Binary
+    # 6. Save Model Pipeline Binary (includes imputer + RF)
     model_path = MODELS_DIR / "rf_pipeline.pkl"
-    joblib.dump(best_rf, model_path)
-    print(f"[TrainModel4] Serialized Random Forest model to {model_path.relative_to(ROOT_DIR)}")
+    joblib.dump(best_pipeline, model_path)
+    print(f"[TrainModel4] Serialized Random Forest Pipeline to {model_path.relative_to(ROOT_DIR)}")
 
     # 7. Update models/test_predictions.csv with pred_rf
     pred_csv_path = MODELS_DIR / "test_predictions.csv"
