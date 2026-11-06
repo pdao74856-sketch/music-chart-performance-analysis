@@ -10,37 +10,36 @@
 ### 1.1. Bối cảnh & Mục đích Nghiên cứu
 Trong chuỗi mô hình của đề tài, các Thành viên 1, 2 và 3 đã lần lượt phát triển các mô hình hồi quy tuyến tính (Model 1 Baseline Audio, Model 2 Audio + Lyrics, Model 2b + Context, Model 3 Full OLS có tương tác thị trường) nhằm ước lượng các tác động biên trung bình lên điểm thành công thương mại (`chart_score`). Tuy nhiên, bản chất cố định của hồi quy tuyến tính OLS không nắm bắt được các tương tác phi tuyến tính phức tạp (non-linear interactions) và các ngưỡng bão hòa (threshold effects).
 
-Nhiệm vụ của Thành viên 4 là thực hiện hai bài toán kiểm định thống kê:
-1. **Kiểm định Tầm quan trọng Biến bằng Hoán vị (Permutation Feature Importance Test - PFI)**: Đánh giá khách quan sức mạnh đóng góp dự báo thực tế ngoài mẫu của từng thuộc tính âm học, ca từ và thời gian trên tập kiểm định ($N_{\text{test}} = 410$) khi triệt tiêu hiện tượng thiên lệch của Gini Impurity (vốn ưu tiên các biến liên tục nhiều giá trị chia tách).
-2. **Kiểm định So sánh Hiệu năng Ngoài mẫu & Paired Cluster Bootstrap Test (Model 4 Random Forest vs. Model 3 OLS)**: Đo lường mức cải thiện sai số ngoài mẫu khi chuyển từ mô hình tuyến tính sang mô hình học máy phi tuyến, kiểm chứng bằng khoảng tin cậy Bootstrap 95% có phân cụm theo ca khúc riêng cho toàn cầu và từng thị trường phân tầng.
+Nhiệm vụ của Thành viên 4 là thực hiện hai nội dung đánh giá:
+1. **Permutation Feature Importance (PFI)**: Đánh giá khách quan mức độ phụ thuộc dự báo của mô hình vào từng thuộc tính âm học, ca từ và thời gian trên tập kiểm định ngoài mẫu ($N_{\text{test}} = 410$), khắc phục hiện tượng thiên lệch của Gini Impurity (vốn ưu tiên các biến liên tục nhiều giá trị chia tách).
+2. **Out-of-Sample Benchmark & Paired Cluster Bootstrap Test**: So sánh hiệu năng dự báo ngoài mẫu giữa Random Forest (Model 4) và OLS Model 3, đồng thời đo lường độ bất định của mức chênh lệch sai số bằng phương pháp Bootstrap theo cụm bài hát phân tầng cho toàn bộ mẫu ba thị trường và từng thị trường riêng rẽ.
 
 ---
 
-### 1.2. Giả thuyết Thống kê & Mức Ý nghĩa ($\alpha = 0.05$)
+### 1.2. Phương pháp Đánh giá & Giả thuyết Thống kê
 
-#### Bài test 1: Kiểm định Tầm quan trọng Hoán vị (Permutation Feature Importance)
-* **Giả thuyết $H_0$:** Hoán vị ngẫu nhiên giá trị của đặc trưng $X_j$ không làm tăng sai số dự báo MAE của Random Forest trên tập Test ($\Delta\text{MAE}_{X_j} \le 0$).
-* **Giả thuyết $H_1$:** Hoán vị ngẫu nhiên giá trị của đặc trưng $X_j$ làm tăng sai số dự báo MAE của Random Forest ($\Delta\text{MAE}_{X_j} > 0$).
-* **Tiêu chuẩn đánh giá bảo thủ để đánh giá mức độ vượt nhiễu:** Để đánh giá xem mức tăng sai số của một đặc trưng có thực sự tách biệt khỏi nhiễu hoán vị ngẫu nhiên hay không, báo cáo áp dụng quy tắc thực nghiệm bảo thủ:
+#### Bài test 1: Permutation Feature Importance (PFI)
+* **Mục tiêu:** Đo lường mức gia tăng sai số tuyệt đối trung bình (MAE degradation) khi hoán vị ngẫu nhiên độc lập từng biến độc lập trên tập kiểm định Test ($N_{\text{test}} = 410$).
+* **Tiêu chuẩn đánh giá bảo thủ để đánh giá mức độ vượt nhiễu:** Để nhận diện các đặc trưng có mức đóng góp thực sự tách biệt khỏi biên độ biến thiên ngẫu nhiên của thuật toán hoán vị, nghiên cứu áp dụng quy tắc thực nghiệm bảo thủ:
   $$\mu(\Delta\text{MAE}_{X_j}) - 2 \cdot \sigma_{X_j} > 0$$
-  *Lưu ý:* Đây là tiêu chuẩn đánh giá bảo thủ thực nghiệm nhằm xếp hạng và diễn giải độ ổn định của PFI, không phải là một kiểm định suy luận thống kê giả thuyết có $p$-value chính thức.
+  *Lưu ý:* Đây là tiêu chuẩn đánh giá bảo thủ thực nghiệm nhằm xếp hạng và diễn giải độ ổn định của PFI, không phải là một kiểm định suy luận thống kê giả thuyết có $p$-value chính thức và không mang hàm ý quan hệ nhân quả.
 
-#### Bài test 2: Kiểm định Paired Bootstrap So sánh RF và OLS Model 3
+#### Bài test 2: Paired Cluster Bootstrap So sánh RF và OLS Model 3
 * **Giả thuyết $H_0$:** Random Forest không có sai số dự báo ngoài mẫu thấp hơn OLS Model 3:
   $$\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}} \le 0$$
 * **Giả thuyết $H_1$:** Random Forest có sai số dự báo ngoài mẫu thấp hơn OLS Model 3 có ý nghĩa thống kê:
   $$\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}} > 0$$
 * **Chỉ tiêu mô tả bổ sung:** Chênh lệch hệ số xác định $\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ được báo cáo để mô tả mức độ giải thích biến thiên phương sai bổ sung (không phải tiêu chí chính để bác bỏ $H_0$).
 * **Quy tắc kiểm định phân tầng (Stratified Cluster Bootstrap):**
-  * **Overall:** Lấy mẫu cụm theo `spotify_track_id` trên toàn bộ tập Test ($N = 410$, $382$ cụm bài hát độc nhất).
-  * **Từng thị trường (VN, US, KR):** Lấy mẫu cụm phân tầng trực tiếp trên tập con của chính thị trường đó (VN: $N=105$; US: $N=165$; KR: $N=140$). Số bài hát ở mỗi lần lặp được bảo toàn cố định, loại bỏ hoàn toàn biến thiên ngẫu nhiên kích thước mẫu thị trường.
-  * $B = 1,000$ lần lặp, cố định `seed=43`. Khoảng tin cậy 95% được tính theo bách phân vị $[2.5\%, 97.5\%]$. Kết luận RF vượt trội khi và chỉ khi cận dưới của 95% CI lớn hơn 0.
+  * **Toàn bộ mẫu ba thị trường (Overall):** Lấy mẫu cụm theo `spotify_track_id` trên toàn bộ tập Test ($N = 410$, $382$ cụm bài hát độc nhất).
+  * **Từng thị trường (VN, US, KR):** Lấy mẫu cụm phân tầng trực tiếp trên tập con của chính thị trường đó (VN: $N=105$; US: $N=165$; KR: $N=140$). Số bài hát ở mỗi lần lặp được bảo toàn cố định, loại bỏ biến thiên ngẫu nhiên kích thước mẫu thị trường.
+  * $B = 1,000$ lần lặp, cố định `seed=43`. Khoảng tin cậy 95% hai phía (95% CI) được tính theo phân vị $[2.5\%, 97.5\%]$. Việc yêu cầu cận dưới của khoảng tin cậy hai phía 95% lớn hơn 0 là một quy tắc kết luận bảo thủ đối với giả thuyết một phía $H_1$ ở mức ý nghĩa $\alpha = 0.05$.
 
 ---
 
 ## 2. CODE THỰC THI & LƯU KẾT QUẢ
 
-Đoạn mã Python dưới đây thực thi toàn bộ quy trình: tính toán chỉ số đánh giá thực tế từ `models/test_predictions.csv`, thực hiện Paired Cluster Bootstrap phân tầng cho Overall và từng thị trường (VN, US, KR), **lưu bảng kết quả kiểm định chính thức ra `reports/rf_vs_ols_paired_bootstrap.csv`**, và tự động xuất đồ thị trực quan hóa chất lượng cao đạt chuẩn 300 DPI phục vụ báo cáo.
+Đoạn mã Python dưới đây thực hiện quy trình đánh giá và so sánh hiệu năng dự báo ngoài mẫu giữa Random Forest và OLS Model 3. Mã sử dụng các dự đoán đã được lưu trong `models/test_predictions.csv`, tính toán các chỉ số đánh giá, thực hiện Paired Cluster Bootstrap phân tầng cho Overall và từng thị trường (VN, US, KR), lưu kết quả vào `reports/rf_vs_ols_paired_bootstrap.csv` và tự động xuất biểu đồ so sánh ở độ phân giải 300 DPI.
 
 ```python
 """
@@ -67,7 +66,6 @@ def run_cluster_bootstrap(sub_df, n_boot=1000, seed=43):
     n_tracks = len(unique_tracks)
     rng = np.random.default_rng(seed)
     
-    # Ánh xạ mã bài hát -> các dòng quan sát tương ứng
     track_to_indices = {}
     for idx, tid in enumerate(ids):
         track_to_indices.setdefault(tid, []).append(idx)
@@ -75,6 +73,10 @@ def run_cluster_bootstrap(sub_df, n_boot=1000, seed=43):
     y_true = sub_df['chart_score_actual'].values
     y_ols = sub_df['pred_ols_m3'].values
     y_rf = sub_df['pred_rf'].values
+    
+    # Điểm ước lượng thực tế trên mẫu ban đầu (Observed Point Estimates)
+    obs_delta_mae = mean_absolute_error(y_true, y_ols) - mean_absolute_error(y_true, y_rf)
+    obs_delta_r2 = r2_score(y_true, y_rf) - r2_score(y_true, y_ols)
     
     delta_r2_list = []
     delta_mae_list = []
@@ -97,10 +99,12 @@ def run_cluster_bootstrap(sub_df, n_boot=1000, seed=43):
     ci_mae = np.percentile(delta_mae_list, [2.5, 97.5])
     
     return {
-        'delta_r2_mean': np.mean(delta_r2_list),
+        'obs_delta_r2': obs_delta_r2,
+        'delta_r2_bootstrap_mean': np.mean(delta_r2_list),
         'delta_r2_ci_lower': ci_r2[0],
         'delta_r2_ci_upper': ci_r2[1],
-        'delta_mae_mean': np.mean(delta_mae_list),
+        'obs_delta_mae': obs_delta_mae,
+        'delta_mae_bootstrap_mean': np.mean(delta_mae_list),
         'delta_mae_ci_lower': ci_mae[0],
         'delta_mae_ci_upper': ci_mae[1]
     }
@@ -115,9 +119,7 @@ for scope in scopes:
     res['n_obs'] = len(sub)
     res['n_unique_tracks'] = int(sub['spotify_track_id'].nunique())
     results.append(res)
-    print(f"Scope: {scope} | N = {res['n_obs']} | Unique Tracks = {res['n_unique_tracks']}")
-    print(f"  Delta R2:  mean = {res['delta_r2_mean']:+.4f}, 95% CI = [{res['delta_r2_ci_lower']:+.4f}, {res['delta_r2_ci_upper']:+.4f}]")
-    print(f"  Delta MAE: mean = {res['delta_mae_mean']:+.4f}, 95% CI = [{res['delta_mae_ci_lower']:+.4f}, {res['delta_mae_ci_upper']:+.4f}]")
+    print(f"Scope: {scope:7s} | Observed Delta MAE = {res['obs_delta_mae']:+.4f} | Bootstrap Mean = {res['delta_mae_bootstrap_mean']:+.4f} | 95% CI = [{res['delta_mae_ci_lower']:+.4f}, {res['delta_mae_ci_upper']:+.4f}]")
 
 # 4. Xuất kết quả Bootstrap chính thức ra CSV
 os.makedirs('reports', exist_ok=True)
@@ -215,9 +217,9 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 ### 4.1. Bảng Tầm quan trọng Biến Hoán vị (Permutation Feature Importance) trên Test Set ($N = 410$)
 *(Trích xuất chuẩn xác từ báo cáo kỹ thuật `reports/report5/rf_benchmark_metrics.json`)*:
 
-| Thứ hạng | Đặc trưng độc lập (Feature) | Nhóm biến | Mean Importance ($\mu$) | Độ lệch chuẩn ($\sigma$) | $\mu - 2\sigma$ | Thỏa mãn tiêu chí $\mu - 2\sigma > 0$? |
+| Thứ hạng | Đặc trưng độc lập (Feature) | Nhóm biến | Mean Importance ($\mu$) | Độ lệch chuẩn ($\sigma$) | $\mu - 2\sigma$ | Thỏa mãn tiêu chí bảo thủ $\mu - 2\sigma > 0$? |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: |
-| **1** | `release_year` | Metadata / Thời gian | **3.4621** | $\pm 0.5799$ | **+2.3024** | **THỎA MÃN (Bác bỏ $H_0$)** |
+| **1** | `release_year` | Metadata / Thời gian | **3.4621** | $\pm 0.5799$ | **+2.3024** | **VƯỢT TIÊU CHÍ BẢO THỦ** |
 | **2** | `rms_variability` | Âm học (Động lực học) | **0.0665** | $\pm 0.0458$ | $-0.0251$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **3** | `spectral_bandwidth` | Âm học (Âm sắc) | **0.0657** | $\pm 0.0365$ | $-0.0073$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **4** | `avg_word_length` | Ca từ (Độ dài từ) | **0.0542** | $\pm 0.0683$ | $-0.0823$ | Không thỏa (Chưa tách khỏi nhiễu) |
@@ -228,45 +230,45 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 | **9** | `Market_VN` | Dummy Thị trường | **0.0138** | $\pm 0.0147$ | $-0.0155$ | Không thỏa (Chưa tách khỏi nhiễu) |
 | **10** | `onset_rate` | Âm học (Tần suất nốt) | **0.0073** | $\pm 0.1082$ | $-0.2091$ | Không thỏa (Chưa tách khỏi nhiễu) |
 
-> **Nhận định thống kê về Permutation Test**: Chỉ duy nhất biến năm phát hành (`release_year`, $\mu - 2\sigma = +2.3024 > 0$) vượt qua tiêu chí kiểm định nghiêm ngặt để bác bỏ $H_0$. Tất cả 9 đặc trưng âm học và ca từ còn lại đều có $\mu - 2\sigma < 0$, cho thấy mức đóng góp của từng đặc trưng đơn lẻ chưa đủ lớn để tách biệt một cách có ý nghĩa thống kê khỏi nhiễu hoán vị ngẫu nhiên trên tập ngoài mẫu.
+> **Nhận định về Permutation Feature Importance:** Chỉ duy nhất biến năm phát hành (`release_year`, $\mu - 2\sigma = +2.3024 > 0$) vượt qua tiêu chí đánh giá bảo thủ. Tất cả 9 đặc trưng âm học và ca từ còn lại đều có $\mu - 2\sigma < 0$, cho thấy mức importance của từng đặc trưng riêng lẻ chưa đủ để tách biệt rõ ràng khỏi nhiễu hoán vị theo tiêu chí này. Đây không phải kết luận bác bỏ $H_0$ bằng một kiểm định suy luận thống kê có $p$-value chính thức. Ngoài ra, do phương pháp hoán vị hiện tại thực hiện theo từng dòng (row-wise), các nghiên cứu tiếp theo có thể cân nhắc Grouped Permutation Importance theo mã bài hát để bảo toàn cấu trúc nhóm đồng nhất giữa các thị trường.
 
 ---
 
 ### 4.2. Bảng Đối chứng Ngoài Mẫu (Out-of-Sample Performance) trên Test Set ($N = 410$)
-*(Đối chiếu khớp 100% với `models/test_predictions.csv` và `reports/model_test_comparison.csv`)*:
+*(Quy ước: $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$, giá trị dương thể hiện RF có sai số thấp hơn OLS)*:
 
 | Phân vùng Thị trường | Cỡ mẫu ($N$) | Mô hình | $R^2$ Ngoài mẫu (%) | MAE | RMSE | Mức chênh lệch của Random Forest so với OLS ($\Delta$) |
 | :--- | :---: | :--- | :---: | :---: | :---: | :--- |
-| **Toàn bộ Test Set (Overall)** | **410** | **OLS Model 3**<br>**Random Forest (M4)** | $3.40\%$<br>**$6.86\%$** | $29.78$<br>**$29.13$** | $38.30$<br>**$37.61$** | $\Delta R^2 = +3.46\%$ pts<br>$\Delta\text{MAE} = -0.65$ pts (giảm sai số $2.2\%$) |
-| **Việt Nam (VN)** | **105** | **OLS Model 3**<br>**Random Forest (M4)** | $2.54\%$<br>**$13.35\%$** | $35.82$<br>**$33.66$** | $44.31$<br>**$41.78$** | **$\Delta R^2 = +10.81\%$ pts**<br>**$\Delta\text{MAE} = -2.16$ pts (giảm sai số $6.0\%$)** |
-| **Hoa Kỳ (US)** | **165** | **OLS Model 3**<br>**Random Forest (M4)** | $2.85\%$<br>**$3.12\%$** | $27.64$<br>**$27.13$** | $36.01$<br>**$35.96$** | $\Delta R^2 = +0.27\%$ pts<br>$\Delta\text{MAE} = -0.51$ pts |
-| **Hàn Quốc (KR)** | **140** | **OLS Model 3**<br>**Random Forest (M4)** | **$3.84\%$**<br>$2.81\%$ | **$27.77$**<br>$28.09$ | **$36.00$**<br>$36.19$ | $\Delta R^2 = -1.03\%$ pts<br>$\Delta\text{MAE} = +0.32$ pts (OLS nhỉnh hơn nhẹ) |
+| **Toàn bộ Test Set (Overall)** | **410** | **OLS Model 3**<br>**Random Forest (M4)** | $3.40\%$<br>**$6.86\%$** | $29.78$<br>**$29.13$** | $38.30$<br>**$37.61$** | $\Delta R^2 = +3.46$ điểm phần trăm<br>$\Delta\text{MAE} = +0.65$ điểm (giảm sai số khoảng $2.2\%$) |
+| **Việt Nam (VN)** | **105** | **OLS Model 3**<br>**Random Forest (M4)** | $2.54\%$<br>**$13.35\%$** | $35.82$<br>**$33.66$** | $44.31$<br>**$41.78$** | **$\Delta R^2 = +10.81$ điểm phần trăm**<br>**$\Delta\text{MAE} = +2.16$ điểm (giảm sai số khoảng $6.0\%$)** |
+| **Hoa Kỳ (US)** | **165** | **OLS Model 3**<br>**Random Forest (M4)** | $2.85\%$<br>**$3.12\%$** | $27.64$<br>**$27.13$** | $36.01$<br>**$35.96$** | $\Delta R^2 = +0.27$ điểm phần trăm<br>$\Delta\text{MAE} = +0.51$ điểm |
+| **Hàn Quốc (KR)** | **140** | **OLS Model 3**<br>**Random Forest (M4)** | **$3.84\%$**<br>$2.81\%$ | **$27.77$**<br>$28.09$ | **$36.00$**<br>$36.19$ | $\Delta R^2 = -1.03$ điểm phần trăm<br>$\Delta\text{MAE} = -0.32$ điểm (OLS tốt hơn nhẹ) |
 
 ---
 
 ### 4.3. Bảng Kiểm định Paired Cluster Bootstrap Phân Tầng ($B = 1,000$ iterations, seed=43)
-*(Kết quả chạy thực tế, lưu tại `reports/rf_vs_ols_paired_bootstrap.csv`. Lấy mẫu cụm theo `spotify_track_id`, phân tầng độc lập theo từng thị trường để bảo toàn cỡ mẫu)*:
+*(Kết quả đối chiếu với `reports/rf_vs_ols_paired_bootstrap.csv`. Lấy mẫu cụm theo `spotify_track_id`, phân tầng độc lập theo từng thị trường để bảo toàn cỡ mẫu)*:
 
-| Phạm vi Mẫu (Scope) | Kích thước Mẫu ($N$) | Số Cụm Bài Hát (Tracks) | Tiêu chí Kiểm định (RF vs. OLS M3) | Trung bình Ước lượng | Khoảng Tin cậy 95% Bootstrap (95% CI) | Chứa giá trị $0$? | Kết luận Thống kê ($\alpha = 0.05$) |
-| :--- | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
-| **Toàn bộ Test (Overall)** | **410** | **382** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.6315$** pts<br>$+0.0335$ ($+3.35\%$) | **$[-0.6602, \, +1.9767]$**<br>$[-0.0377, \, +0.0997]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Mức giảm sai số của RF nằm trong biên độ nhiễu lấy mẫu ngoài mẫu toàn cầu. |
-| **Việt Nam (VN)** | **105** | **105** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+2.1521$** pts<br>$+0.1074$ ($+10.74\%$) | **$[-0.2832, \, +4.4728]$**<br>$[-0.0133, \, +0.2144]$ | **CÓ**<br>CÓ | Mức giảm sai số đạt $+2.15$ điểm MAE và $R^2$ tăng $+10.74\%$, tuy nhiên khoảng tin cậy 95% vẫn chứa giá trị 0 nên chưa đủ bằng chứng bác bỏ $H_0$. |
-| **Hoa Kỳ (US)** | **165** | **165** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.5117$** pts<br>$+0.0011$ ($+0.11\%$) | **$[-1.9387, \, +3.0100]$**<br>$[-0.1580, \, +0.1436]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Hiệu năng dự báo của OLS và RF tại Mỹ là tương đương. |
-| **Hàn Quốc (KR)** | **140** | **140** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$-0.3687$** pts<br>$-0.0128$ ($-1.28\%$) | **$[-2.3154, \, +1.5649]$**<br>$[-0.1199, \, +0.0864]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. OLS nhỉnh hơn nhẹ nhưng khoảng tin cậy bao quanh 0. |
+| Phạm vi Mẫu (Scope) | Kích thước Mẫu ($N$) | Số Cụm Bài Hát (Tracks) | Tiêu chí Kiểm định (RF vs. OLS M3) | Điểm Ước lượng Thực tế ($\Delta_{\text{obs}}$) | Trung bình Bootstrap | Khoảng Tin cậy 95% Bootstrap (95% CI) | Chứa giá trị $0$? | Kết luận Thống kê ($\alpha = 0.05$) |
+| :--- | :---: | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| **Toàn bộ Test (Overall)** | **410** | **382** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.6505$** pts<br>$+3.46\%$ | **$+0.6315$** pts<br>$+0.0335$ ($+3.35\%$) | **$[-0.6602, \, +1.9767]$**<br>$[-0.0377, \, +0.0997]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Mức giảm sai số của RF chưa đủ bằng chứng thống kê để khẳng định trên toàn bộ mẫu kiểm định gồm ba thị trường. |
+| **Việt Nam (VN)** | **105** | **105** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+2.1633$** pts<br>$+10.81\%$ | **$+2.1521$** pts<br>$+0.1074$ ($+10.74\%$) | **$[-0.2832, \, +4.4728]$**<br>$[-0.0133, \, +0.2144]$ | **CÓ**<br>CÓ | Mức giảm sai số đạt $+2.16$ điểm MAE và $R^2$ tăng $+10.81\%$, tuy nhiên khoảng tin cậy 95% vẫn chứa giá trị 0 nên chưa đủ bằng chứng bác bỏ $H_0$. |
+| **Hoa Kỳ (US)** | **165** | **165** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.5114$** pts<br>$+0.28\%$ | **$+0.5117$** pts<br>$+0.0011$ ($+0.11\%$) | **$[-1.9387, \, +3.0100]$**<br>$[-0.1580, \, +0.1436]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Kết quả chưa cho thấy sự khác biệt rõ ràng về hiệu năng dự báo giữa OLS và Random Forest tại thị trường Mỹ. |
+| **Hàn Quốc (KR)** | **140** | **140** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$-0.3200$** pts<br>$-1.03\%$ | **$-0.3687$** pts<br>$-0.0128$ ($-1.28\%$) | **$[-2.3154, \, +1.5649]$**<br>$[-0.1199, \, +0.0864]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. OLS nhỉnh hơn nhẹ nhưng khoảng tin cậy bao quanh 0. |
 
 ---
 
 ## 5. KẾT LUẬN & ĐIỂM NHẤN ĐƯA LÊN SLIDE THUYẾT TRÌNH
 
 ### 5.1. Ba Thông điệp Cốt lõi cho Bài Thuyết trình Báo cáo (Slide Highlights)
-1. **Quy luật Thống trị của Yếu tố Thời điểm Phát hành (Recency Effect):**
-   * Kết quả Permutation Importance trên tập Test khẳng định: **Chỉ duy nhất năm phát hành (`release_year`, mean importance = $3.462$, $\mu - 2\sigma = +2.302 > 0$) thỏa mãn tiêu chí bảo thủ vượt khỏi nhiễu hoán vị**. 
-   * Toàn bộ 9 đặc trưng âm học và ca từ còn lại đều có $\mu - 2\sigma < 0$, nghĩa là theo tiêu chí đánh giá bảo thủ này, chưa đủ bằng chứng để khẳng định bất kỳ một đặc trưng âm học hay ca từ riêng lẻ nào có mức importance tách biệt rõ rệt khỏi nhiễu hoán vị ngẫu nhiên trên tập Test ngoài mẫu.
-2. **Xu hướng Phi tuyến Riêng biệt tại Thị trường Âm nhạc Việt Nam:**
-   * Trong khi ở Mỹ và Hàn Quốc, OLS và Random Forest cho kết quả tương đương, thì **tại Việt Nam, Random Forest ghi nhận mức tăng $R^2$ điểm mẫu từ $2.54\%$ lên $13.35\%$ (tăng $10.81$ điểm phần trăm)** và giảm MAE $2.15$ điểm. 
-   * Tuy nhiên, theo phân tích Stratified Paired Bootstrap khắt khe có phân cụm, khoảng tin cậy 95% của $\Delta\text{MAE}$ tại VN là $[-0.2832, \, +4.4728]$ và $\Delta R^2$ là $[-0.0133, \, +0.2144]$ vẫn chứa giá trị $0$. Do đó, về mặt học thuật, nhóm kết luận đây là **xu hướng phi tuyến mạnh mẽ mang tính gợi mở thực nghiệm trên mẫu quan sát**, chưa thể khẳng định có ý nghĩa thống kê ở mức $\alpha = 0.05$.
+1. **Vai trò nổi bật của năm phát hành trong khả năng dự báo của Random Forest:**
+   * Kết quả Permutation Feature Importance cho thấy `release_year` là đặc trưng có mức importance nổi bật nhất trong mô hình Random Forest ($\mu = 3.462$, $\mu - 2\sigma = +2.302 > 0$). Biến này là đặc trưng duy nhất vượt qua tiêu chí đánh giá bảo thủ.
+   * Kết quả phản ánh mức độ phụ thuộc dự báo của mô hình vào thông tin năm phát hành, không chứng minh quan hệ nhân quả giữa năm phát hành và thành công thương mại của bài hát. Tất cả 9 đặc trưng âm học và ca từ còn lại đều có $\mu - 2\sigma < 0$, cho thấy mức độ đóng góp đơn lẻ của từng đặc trưng chưa đủ để tách biệt rõ ràng khỏi nhiễu hoán vị trên tập Test.
+2. **Tín hiệu cải thiện dự báo của Random Forest tại thị trường Việt Nam:**
+   * Trên mẫu kiểm định Việt Nam, Random Forest ghi nhận mức tăng $R^2$ điểm mẫu từ $2.54\%$ lên $13.35\%$ ($+10.81$ điểm phần trăm) và giảm MAE khoảng $2.16$ điểm so với OLS Model 3.
+   * Tuy nhiên, khoảng tin cậy Bootstrap 95% của cả $\Delta\text{MAE}$ ($[-0.2832, \, +4.4728]$) và $\Delta R^2$ ($[-0.0133, \, +0.2144]$) đều chứa giá trị $0$. Vì vậy, đây là kết quả mô tả mang tính gợi mở thực nghiệm, chưa đủ bằng chứng để kết luận Random Forest vượt trội có ý nghĩa thống kê tại thị trường Việt Nam.
 3. **Phối hợp Song hành Tuyến tính – Phi tuyến trên Web App (Streamlit Dual-Model Architecture):**
-   * Đề tài đề xuất mô hình ứng dụng kết hợp: OLS Model 3 đảm nhiệm vai trò **giải thích kinh tế lượng (Inference & Interpretability)** với các hệ số kiểm định Wald và $p$-value chuẩn xác; trong khi Model 4 Random Forest đóng vai trò **công cụ mô phỏng dự báo phi tuyến (Real-time Non-linear Simulator)** phục vụ trực quan hóa trên Tab 2 và Tab 4 của ứng dụng Web.
+   * Đề tài đề xuất mô hình ứng dụng kết hợp: OLS Model 3 đảm nhiệm vai trò **giải thích kinh tế lượng (Inference & Interpretability)** thông qua các hệ số hồi quy và kết quả kiểm định thống kê trong khuôn khổ các giả định của mô hình; trong khi Model 4 Random Forest đóng vai trò **công cụ mô phỏng dự báo phi tuyến (Real-time Non-linear Simulator)** phục vụ trực quan hóa trên Tab 2 và Tab 4 của ứng dụng Web.
 
 ---
 *Báo cáo kiểm định thống kê chuẩn hóa bởi Thành viên 4 – Đồ án ADY201m. Dữ liệu đối chứng lưu tại `reports/rf_vs_ols_paired_bootstrap.csv`.*
