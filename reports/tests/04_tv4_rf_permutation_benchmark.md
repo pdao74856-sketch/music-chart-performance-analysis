@@ -166,14 +166,18 @@ Biểu đồ đối chứng trực diện hệ số xác định ngoài mẫu ($
 
 ---
 
-### 4.2. Bảng Đối chứng Ngoài Mẫu (Out-of-Sample Performance) trên Test Set ($N = 410$)
+### 4.2. So sánh hiệu suất OLS và Random Forest theo từng thị trường
 
-| Phân vùng Thị trường | Cỡ mẫu ($N$) | Mô hình | $R^2$ Ngoài mẫu (%) | MAE | RMSE | Mức cải thiện của Random Forest ($\Delta$) |
-| :--- | :---: | :--- | :---: | :---: | :---: | :--- |
-| **Toàn bộ Test Set (Overall)** | **410** | **OLS Model 3**<br>**Random Forest (M4)** | $3.40\%$<br>**$6.86\%$** | $29.78$<br>**$29.13$** | $38.30$<br>**$37.61$** | $\Delta R^2 = +3.46\%$ pts<br>$\Delta\text{MAE} = -0.65$ pts (giảm sai số $2.2\%$) |
-| **Việt Nam (VN)** | **105** | **OLS Model 3**<br>**Random Forest (M4)** | $2.54\%$<br>**$13.35\%$** | $35.82$<br>**$33.66$** | $43.91$<br>**$41.42$** | **$\Delta R^2 = +10.81\%$ pts (tăng gấp $5.25$ lần)**<br>**$\Delta\text{MAE} = -2.16$ pts (giảm sai số $6.0\%$)** |
-| **Hoa Kỳ (US)** | **165** | **OLS Model 3**<br>**Random Forest (M4)** | $2.85\%$<br>**$3.12\%$** | $27.64$<br>**$27.13$** | $35.48$<br>**$35.12$** | $\Delta R^2 = +0.27\%$ pts<br>$\Delta\text{MAE} = -0.51$ pts (tương đồng) |
-| **Hàn Quốc (KR)** | **140** | **OLS Model 3**<br>**Random Forest (M4)** | **$3.84\%$**<br>$2.81\%$ | **$27.77$**<br>$28.09$ | **$36.85$**<br>$37.14$ | $\Delta R^2 = -1.03\%$ pts<br>$\Delta\text{MAE} = +0.32$ pts (OLS nhỉnh hơn nhẹ) |
+| Market | Model | R² | MAE | RMSE |
+|:---|:---|---:|---:|---:|
+| Overall | OLS | 3.40% | 29.78 | 38.30 |
+| Overall | Random Forest | 6.86% | 29.13 | 37.61 |
+| VN | OLS | 2.54% | 35.82 | 43.91 |
+| VN | Random Forest | 13.35% | 33.66 | 41.78 |
+| US | OLS | 2.85% | 27.64 | 35.48 |
+| US | Random Forest | 3.12% | 27.13 | 35.96 |
+| KR | OLS | 3.84% | 27.77 | 36.85 |
+| KR | Random Forest | 2.81% | 28.09 | 36.19 |
 
 ---
 
@@ -197,6 +201,31 @@ Trong nhóm đặc trưng âm học, `rms_variability` và `spectral_bandwidth` 
 
 Nhìn chung, kết quả cho thấy yếu tố thời điểm phát hành có vai trò nổi bật trong việc dự đoán hiệu suất bài hát trên bảng xếp hạng. Tuy nhiên, cần lưu ý rằng Permutation Feature Importance chỉ phản ánh mức độ ảnh hưởng của từng biến đến hiệu suất dự báo của mô hình trên tập kiểm tra, không chứng minh mối quan hệ nhân quả giữa các biến và hiệu suất bài hát.
 
+### 5.2. Đánh giá hiệu quả mô hình theo từng thị trường
+
+Kết quả benchmark cho thấy hiệu suất của Random Forest (RF) khác nhau giữa ba thị trường VN, US và KR.
+
+- **Vietnam (VN):** RF đạt kết quả cải thiện rõ rệt so với OLS. R² tăng từ 2.54% lên 13.35%, tương đương khoảng 5.25 lần. MAE giảm từ 35.82 xuống 33.66, tức giảm 2.16 điểm (khoảng 6.03%). Điều này cho thấy RF có khả năng nắm bắt một số mối quan hệ phi tuyến hoặc tương tác giữa các đặc trưng tốt hơn OLS trong dữ liệu VN.
+
+- **United States (US):** RF chỉ cải thiện nhẹ so với OLS. R² tăng từ 2.85% lên 3.12%, trong khi MAE giảm từ 27.64 xuống 27.13. Mức cải thiện này tương đối nhỏ.
+
+- **South Korea (KR):** OLS có kết quả tốt hơn RF. R² của OLS đạt 3.84%, cao hơn mức 2.81% của RF. MAE của OLS cũng thấp hơn, 27.77 so với 28.09 của RF.
+
+Mặc dù RF cho thấy kết quả tích cực tại thị trường VN và cải thiện nhẹ tại US, kết quả Paired Bootstrap trên toàn bộ dữ liệu cho thấy khoảng tin cậy 95% của chênh lệch R² và MAE đều chứa giá trị 0. Vì vậy, chưa có đủ bằng chứng thống kê để kết luận RF vượt trội OLS một cách có ý nghĩa trên toàn bộ dữ liệu.
+
+Nhìn chung, hiệu suất mô hình phụ thuộc vào đặc điểm của từng thị trường. Kết quả tại VN gợi ý rằng các mối quan hệ phi tuyến hoặc tương tác giữa đặc trưng có thể đóng vai trò quan trọng, tuy nhiên cần nghiên cứu thêm để xác nhận giả thuyết này.
+
+### 5.3. Ý nghĩa của việc kết hợp OLS và Random Forest
+
+OLS và Random Forest cung cấp hai góc nhìn bổ sung cho việc phân tích hiệu suất bài hát.
+
+- **OLS – Khả năng giải thích:** OLS giúp phân tích mối quan hệ tuyến tính giữa các đặc trưng của bài hát và hiệu suất trên bảng xếp hạng. Các hệ số hồi quy và p-value hỗ trợ đánh giá chiều hướng, mức độ và ý nghĩa thống kê của các mối quan hệ này.
+
+- **Random Forest – Khả năng mô hình hóa phi tuyến:** RF có khả năng nắm bắt các mối quan hệ phi tuyến và tương tác giữa nhiều đặc trưng mà mô hình tuyến tính có thể không thể hiện đầy đủ. Thông qua Tab 2 – Simulator, người dùng có thể điều chỉnh các đặc trưng của bài hát và quan sát sự thay đổi trong dự đoán của mô hình.
+
+- **Kết hợp hai mô hình:** Tab 4 – Diagnostics cung cấp góc nhìn so sánh giữa OLS và RF, giúp người dùng hiểu rõ hơn về sự khác biệt giữa khả năng giải thích của mô hình tuyến tính và khả năng dự đoán của mô hình phi tuyến.
+
+Do đó, việc sử dụng cả OLS và RF không nhằm khẳng định một mô hình luôn tốt hơn mô hình còn lại, mà nhằm tận dụng ưu điểm của từng phương pháp để đưa ra phân tích toàn diện hơn về các yếu tố liên quan đến thành tích của bài hát trên bảng xếp hạng.
 
 ---
 *Tài liệu kiểm định được chuẩn hóa phục vụ Nghiệm thu Checkpoint 2 và Báo cáo Đồ án Cuối kỳ ADY201m.*
