@@ -14,6 +14,7 @@ Project: What Makes a Hit Song? (2021-2026)
 import sys
 import os
 import time
+import json
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Union
 
@@ -50,6 +51,31 @@ def safe_to_csv(df: pd.DataFrame, filepath: Union[str, Path], **kwargs) -> None:
     filepath.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = filepath.with_suffix(filepath.suffix + ".tmp")
     df.to_csv(tmp_path, **kwargs)
+    
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            if filepath.exists():
+                os.replace(tmp_path, filepath)
+            else:
+                tmp_path.rename(filepath)
+            break
+        except PermissionError:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(0.5)
+
+
+def safe_to_json(data: Any, filepath: Union[str, Path], **kwargs) -> None:
+    """
+    Safely writes data to JSON via temporary file and atomic replace,
+    with retries on PermissionError.
+    """
+    filepath = Path(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = filepath.with_suffix(filepath.suffix + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, **kwargs)
     
     max_retries = 5
     for attempt in range(max_retries):
@@ -141,7 +167,7 @@ def generate_diagnostics():
     axes[0].set_ylabel("Sample Quantiles (Residuals)", fontsize=10)
     axes[0].grid(True, linestyle="--", alpha=0.5)
     axes[0].get_lines()[0].set_markersize(3.5)
-    axes[0].get_lines()[0].set_color("#1f77b4")
+    axes[0].get_lines()[0].set_color("#4a4a4a")
     axes[0].get_lines()[0].set_alpha(0.6)
     axes[0].get_lines()[1].set_color("#d62728")
     axes[0].get_lines()[1].set_linewidth(1.5)
@@ -153,7 +179,7 @@ def generate_diagnostics():
     axes[1].set_ylabel("Sample Quantiles (Residuals)", fontsize=10)
     axes[1].grid(True, linestyle="--", alpha=0.5)
     axes[1].get_lines()[0].set_markersize(4.0)
-    axes[1].get_lines()[0].set_color("#2ca02c")
+    axes[1].get_lines()[0].set_color("#4a4a4a")
     axes[1].get_lines()[0].set_alpha(0.7)
     axes[1].get_lines()[1].set_color("#d62728")
     axes[1].get_lines()[1].set_linewidth(1.5)
@@ -188,7 +214,7 @@ def generate_diagnostics():
     axes[0].set_xlabel("Fitted Values (chart_score)", fontsize=10)
     axes[0].set_ylabel("Residuals (chart_score - y_hat)", fontsize=10)
     axes[0].grid(True, linestyle="--", alpha=0.5)
-    axes[0].legend(loc="upper left", framealpha=0.8, fontsize=9)
+    axes[0].legend(loc="upper right", framealpha=0.8, fontsize=9)
 
     # Test Panel
     test_m = split.raw_test["market"].values
@@ -208,7 +234,7 @@ def generate_diagnostics():
     axes[1].set_xlabel("Fitted Values (chart_score)", fontsize=10)
     axes[1].set_ylabel("Residuals (chart_score - y_hat)", fontsize=10)
     axes[1].grid(True, linestyle="--", alpha=0.5)
-    axes[1].legend(loc="upper left", framealpha=0.8, fontsize=9)
+    axes[1].legend(loc="upper right", framealpha=0.8, fontsize=9)
 
     plt.tight_layout()
     plt.savefig(rvf_path, dpi=300, bbox_inches="tight")
@@ -416,6 +442,34 @@ def generate_diagnostics():
     sens_csv_path = out_dir / "sensitivity_pre1980.csv"
     safe_to_csv(df_sensitivity, sens_csv_path, index=False)
     print(f"Saved full sensitivity comparison to: {sens_csv_path}")
+
+    # Save diagnostics summary to JSON
+    summary_data = {
+        "breusch_pagan": {
+            "lm": float(bp_lm_stat),
+            "p_lm": float(bp_p_val),
+            "f": float(bp_f_stat),
+            "p_f": float(bp_fp_val),
+            "n": int(n_train),
+        },
+        "cooks_distance": {
+            "threshold_4_n": float(threshold_4_n),
+            "max_cooks_d": float(np.max(cooks_d)),
+            "n_exceeding_4_n": int(np.sum(cooks_d > threshold_4_n)),
+        },
+        "pre1980_sensitivity": {
+            "n_dropped_train": int(dropped_train_rows),
+            "q01_used": float(q01_fixed),
+            "test_r2": float(r2_filt),
+            "test_mae": float(mae_filt),
+            "test_rmse": float(rmse_filt),
+            "p_interactions": float(w_inter_filt["p_value"]),
+            "p_lyrics": float(w_lyrics_filt["p_value"]),
+        },
+    }
+    summary_json_path = out_dir / "diagnostics_summary.json"
+    safe_to_json(summary_data, summary_json_path, indent=2)
+    print(f"Saved diagnostics summary to: {summary_json_path}")
 
 
     # --------------------------------------------------------------------------
