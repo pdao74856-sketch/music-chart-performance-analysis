@@ -19,6 +19,7 @@ data/raw/audio/*.mp3
 
 # Local data caches and large CSVs
 data/processed/*.csv
+!data/processed/modeling_dataset_clean_cache.csv
 data/raw/chart/*.csv
 data/sampling/*.csv
 
