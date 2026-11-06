@@ -1,175 +1,218 @@
-"""Train a fair audio-only vs audio-plus-lyrics OLS comparison.
+"""Fit Member 3's audio baseline and audio-plus-lyrics models on get_split().
 
-Uses the frozen track-ID split, Train-only market medians and Train-only scaling.
-Run from repository root: python -m src.modeling.train_model2_lyrics
+Historical results from the pre-canonical pipeline remain in reports/report4.
+This runner writes the migrated results to reports/report4/member3_canonical.
+Run from the repository root: python -m src.modeling.train_model2_lyrics
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from sklearn.preprocessing import StandardScaler
 
-from src.features.lyrics_processor import MODEL2_FEATURES
+from src.features.prepare_features import SplitResult, get_split
 from src.utils.ols_cluster_fit import fit_ols_cluster, metrics, wald_block
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIO = ["tempo_bpm", "onset_rate", "tempo_stability", "rms_energy",
-         "rms_variability", "spectral_centroid", "chord_change_rate",
-         "key_confidence", "chroma_repetition_determinism",
-         "chroma_mean_pattern_duration", "chroma_longest_pattern_duration",
-         "mfcc_repetition_determinism", "mfcc_mean_pattern_duration",
-         "mfcc_longest_pattern_duration"]
+DEFAULT_OUTPUT_DIR = ROOT / "reports/report4/member3_canonical"
+
+AUDIO_FEATURES = [
+    "tempo_std", "onset_rate_std", "tempo_stability_std", "energy_std",
+    "rms_variability_std", "spectral_centroid_std", "chord_change_rate_std",
+    "key_confidence_std", "chroma_repetition_determinism_std",
+    "chroma_mean_pattern_duration_std", "chroma_longest_pattern_duration_std",
+    "mfcc_repetition_determinism_std", "mfcc_mean_pattern_duration_std",
+    "mfcc_longest_pattern_duration_std",
+]
+LYRICS_FEATURES = [
+    "word_count_std", "repetition_ratio_std", "avg_word_length_std",
+    "line_count_std", "chorus_repetition_count_std", "punctuation_ratio_std",
+]
+CONTROL_FEATURES = ["release_year_std", "Market_VN", "Market_KR"]
+MODEL1_FEATURES = AUDIO_FEATURES + ["mode"] + CONTROL_FEATURES
+MODEL2_FEATURES = MODEL1_FEATURES + LYRICS_FEATURES
 
 
-def build_train_medians(df: pd.DataFrame, train_ids: set[str]) -> dict:
-    train = df[df.spotify_track_id.isin(train_ids)]
-    markets = {}
-    for market, group in train.groupby("market", sort=True):
-        med = group[MODEL2_FEATURES].apply(pd.to_numeric, errors="coerce").median()
-        if med.isna().any():
-            raise ValueError(f"No valid Train median for {market}: {med[med.isna()].index.tolist()}")
-        markets[market] = {
-            "n_rows": int(len(group)),
-            "medians": {k: float(v) for k, v in med.items()},
-            "valid_counts": {k: int(group[k].notna().sum()) for k in MODEL2_FEATURES},
-        }
-    if set(markets) != {"VN", "US", "KR"}:
-        raise ValueError(f"Expected VN/US/KR Train rows, got {sorted(markets)}")
-    return {"source": "data/processed/modeling_dataset.csv",
-            "split_source": "models/train_track_ids.json",
-            "train_unique_tracks": int(train.spotify_track_id.nunique()),
-            "train_rows": int(len(train)), "features": MODEL2_FEATURES,
-            "markets": markets}
+def _validate_and_select_features(split: SplitResult) -> tuple[list[str], list[str]]:
+    """Validate the agreed model design and return its explicit column lists."""
+    expected_lyrics = [
+        "word_count_std", "repetition_ratio_std", "avg_word_length_std",
+        "line_count_std", "chorus_repetition_count_std", "punctuation_ratio_std",
+    ]
+    if LYRICS_FEATURES != expected_lyrics:
+        raise AssertionError("Model 2 lyrics feature definition changed unexpectedly")
+
+    required = MODEL2_FEATURES
+    missing_from_contract = [c for c in required if c not in split.feature_names]
+    missing_train = [c for c in required if c not in split.X_train.columns]
+    missing_test = [c for c in required if c not in split.X_test.columns]
+    if missing_from_contract or missing_train or missing_test:
+        raise ValueError(
+            "Canonical split is missing required model columns: "
+            f"feature_names={missing_from_contract}, "
+            f"X_train={missing_train}, X_test={missing_test}"
+        )
+    interaction_columns = [c for c in MODEL2_FEATURES if "__x__" in c]
+    if interaction_columns:
+        raise AssertionError(f"Interaction terms must be excluded: {interaction_columns}")
+    if MODEL2_FEATURES[:len(MODEL1_FEATURES)] != MODEL1_FEATURES:
+        raise AssertionError("Model 2 must equal Model 1 plus exactly six lyrics columns")
+    return list(MODEL1_FEATURES), list(MODEL2_FEATURES)
 
 
-def _prepare(df: pd.DataFrame, medians: dict, scaler: StandardScaler | None = None,
-             fit: bool = False):
-    out = df.copy()
-    for col in MODEL2_FEATURES:
-        out[col] = pd.to_numeric(out[col], errors="coerce")
-    missing = out.groupby("market")[MODEL2_FEATURES].agg(lambda x: int(x.isna().sum()))
-    for market, values in medians["markets"].items():
-        mask = out.market.eq(market)
-        for col in MODEL2_FEATURES:
-            out.loc[mask, col] = out.loc[mask, col].fillna(values["medians"][col])
-    if out[MODEL2_FEATURES].isna().any().any():
-        raise ValueError("Lyrics median missing for one or more markets/features")
-    continuous = AUDIO + MODEL2_FEATURES + ["release_year"]
-    out["tempo_bpm"] = pd.to_numeric(out.tempo_bpm, errors="coerce")
-    out["tempo_bpm"] = out["tempo_bpm"]
-    out["word_count"] = np.log1p(out.word_count.astype(float))
-    if fit:
-        scaler = StandardScaler().fit(out[continuous])
-    assert scaler is not None
-    z = pd.DataFrame(scaler.transform(out[continuous]), columns=continuous, index=out.index)
-    # Model 1 and Model 2 use identical rows and shared training-fitted transforms.
-    x = pd.DataFrame(index=out.index)
-    for col in AUDIO + MODEL2_FEATURES + ["release_year"]:
-        x[f"{col}_std"] = z[col]
-    mode = out["audio_mode"].astype(str).str.lower()
-    x["mode"] = mode.map({"major": 1.0, "minor": 0.0, "1": 1.0, "0": 0.0})
-    if x["mode"].isna().any():
-        raise ValueError("Invalid audio_mode")
-    x["Market_VN"] = out.market.eq("VN").astype(float)
-    x["Market_KR"] = out.market.eq("KR").astype(float)
-    return x, scaler, missing
+def _adjusted_r2(r2: float, n: int, p: int) -> float:
+    if n <= p + 1:
+        return float("nan")
+    return float(1 - (1 - r2) * (n - 1) / (n - p - 1))
 
 
-def run(data_path: Path | None = None, output_dir: Path | None = None) -> dict:
-    data_path = data_path or ROOT / "data/processed/modeling_dataset.csv"
-    output_dir = output_dir or ROOT / "reports/report4"
+def run(output_dir: Path | None = None) -> dict[str, Any]:
+    """Fit and evaluate the two agreed models using the canonical split only."""
+    split = get_split()
+    output_dir = Path(output_dir) if output_dir is not None else DEFAULT_OUTPUT_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
-    df = pd.read_csv(data_path)
-    train_ids = set(json.loads((ROOT / "models/train_track_ids.json").read_text(encoding="utf-8"))["track_ids"])
-    test_ids = set(json.loads((ROOT / "models/test_track_ids.json").read_text(encoding="utf-8"))["track_ids"])
-    if train_ids & test_ids:
-        raise ValueError("Frozen train/test IDs overlap")
-    if df.spotify_track_id.duplicated().any() and df.duplicated(["spotify_track_id", "market"]).any():
-        raise ValueError("Duplicate track-market observations in modeling data")
-    df = df[df.spotify_track_id.isin(train_ids | test_ids)].copy().reset_index(drop=True)
-    train_mask = df.spotify_track_id.isin(train_ids)
-    test_mask = df.spotify_track_id.isin(test_ids)
-    med = build_train_medians(df, train_ids)
-    # Preserve existing untracked artifact when its content already validates.
-    median_path = ROOT / "data/processed/lyrics_market_medians.json"
-    if median_path.exists():
-        current = json.loads(median_path.read_text(encoding="utf-8"))
-        if current.get("markets") != med["markets"]:
-            raise ValueError("Existing median artifact does not match recalculated Train-only values")
-    else:
-        median_path.write_text(json.dumps(med, indent=2) + "\n", encoding="utf-8")
-    # Fit every transform only on official Train observations, then apply to both splits.
-    _, scaler, _ = _prepare(df.loc[train_mask].copy(), med, fit=True)
-    X, _, _ = _prepare(df, med, scaler=scaler, fit=False)
-    # Missingness is recorded pre-imputation; after-imputation must be exactly zero.
-    missing_records = []
-    for subset_name, mask in (("train", train_mask), ("test", test_mask)):
-        part = df.loc[mask]
-        for market in ("VN", "US", "KR"):
-            market_rows = part[part.market.eq(market)]
-            for col in MODEL2_FEATURES:
-                missing_records.append({"split": subset_name, "market": market,
-                    "feature": col, "n": len(market_rows),
-                    "missing_before": int(market_rows[col].isna().sum()),
-                    "missing_after": 0})
-    pd.DataFrame(missing_records).to_csv(output_dir / "member3_model2_missingness.csv", index=False)
+    m1_features, m2_features = _validate_and_select_features(split)
 
-    results, predictions = {}, {}
-    y = pd.to_numeric(df.chart_score, errors="raise")
-    ids = df.spotify_track_id
-    m1_cols = [f"{c}_std" for c in AUDIO] + ["mode", "release_year_std", "Market_VN", "Market_KR"]
-    m2_cols = m1_cols + [f"{c}_std" for c in MODEL2_FEATURES]
-    for name, cols in (("Model 1 (audio + controls)", m1_cols),
-                       ("Model 2 (audio + lyrics + controls)", m2_cols)):
-        fit = fit_ols_cluster(y.loc[train_mask], X.loc[train_mask, cols], ids.loc[train_mask])
-        results[name] = fit
-        pred = fit.predict(sm.add_constant(X.loc[test_mask, cols], has_constant="add"))
-        predictions[name] = np.asarray(pred)
-    # Fair test rows identical by construction.
-    score_rows = []
-    for name, pred in predictions.items():
-        actual = y.loc[test_mask].to_numpy()
-        err = actual - pred
-        r2 = 1 - np.sum(err**2) / np.sum((actual - actual.mean())**2)
-        score_rows.append({"model": name, "N": len(actual), "R2": r2,
-            "adjusted_R2": 1 - (1-r2)*(len(actual)-1)/(len(actual)-len(m1_cols if name.startswith("Model 1") else m2_cols)-1),
-            "RMSE": float(np.sqrt(np.mean(err**2))), "MAE": float(np.mean(np.abs(err)))})
-    test_ids_rows = df.loc[test_mask, "spotify_track_id"].to_numpy()
-    test_markets = df.loc[test_mask, "market"].to_numpy()
-    market_metrics = []
-    for name, pred in predictions.items():
-        m = metrics(y.loc[test_mask], pred, market=test_markets,
-                    track_ids=test_ids_rows, n_boot=1000, seed=43)
-        m.insert(0, "model", name)
-        market_metrics.append(m)
+    if len(split.X_train) != len(split.y_train) or len(split.ids_train) != len(split.y_train):
+        raise ValueError("Canonical Train rows, targets, and IDs do not align")
+    if len(split.X_test) != len(split.y_test) or len(split.ids_test) != len(split.y_test):
+        raise ValueError("Canonical Test rows, targets, and IDs do not align")
+    if not (split.X_train.index.equals(split.y_train.index) and
+            split.X_train.index.equals(split.ids_train.index)):
+        raise ValueError("Canonical Train matrix, target, and IDs have different row indexes")
+    if not (split.X_test.index.equals(split.y_test.index) and
+            split.X_test.index.equals(split.ids_test.index)):
+        raise ValueError("Canonical Test matrix, target, and IDs have different row indexes")
+    if set(split.ids_train).intersection(set(split.ids_test)):
+        raise ValueError("Canonical Train/Test track IDs overlap")
+
+    model_columns = {
+        "Model 1 (audio + controls)": m1_features,
+        "Model 2 (audio + lyrics + controls)": m2_features,
+    }
+    fitted, predictions, score_rows, metric_frames = {}, {}, [], []
+    for model_name, columns in model_columns.items():
+        result = fit_ols_cluster(split.y_train, split.X_train[columns], split.ids_train)
+        fitted[model_name] = result
+        test_design = sm.add_constant(split.X_test[columns], has_constant="add")
+        prediction = np.asarray(result.predict(test_design))
+        predictions[model_name] = prediction
+
+        evaluated = metrics(
+            split.y_test, prediction,
+            market=split.market_test,
+            track_ids=split.ids_test,
+            n_boot=1000,
+            seed=43,
+        )
+        evaluated.insert(0, "model", model_name)
+        metric_frames.append(evaluated)
+        overall = evaluated.loc[evaluated["Market"].eq("Overall")].iloc[0]
+        score_rows.append({
+            "model": model_name,
+            "N": int(len(split.y_test)),
+            "R2": float(overall["R2"]),
+            "adjusted_R2": _adjusted_r2(float(overall["R2"]), len(split.y_test), len(columns)),
+            "RMSE": float(overall["RMSE"]),
+            "MAE": float(overall["MAE"]),
+        })
+
+    lyrics_wald = wald_block(fitted["Model 2 (audio + lyrics + controls)"], LYRICS_FEATURES)
+    lyrics_wald.update({
+        "method": "cluster-robust Wald chi-square",
+        "alpha": 0.05,
+        "conclusion": "reject H0" if lyrics_wald["p_value"] < 0.05 else "fail to reject H0",
+    })
+
     pd.DataFrame(score_rows).to_csv(output_dir / "member3_model_comparison.csv", index=False)
-    pd.concat(market_metrics, ignore_index=True).to_csv(output_dir / "member3_model_test_metrics.csv", index=False)
-    coefficients = []
-    for name, fit in results.items():
-        ci = fit.conf_int()
-        for term in fit.params.index:
-            coefficients.append({"model": name, "term": term, "coefficient": fit.params[term],
-                "cluster_se": fit.bse[term], "p_value": fit.pvalues[term],
-                "ci_lower": ci.loc[term, 0], "ci_upper": ci.loc[term, 1]})
-    pd.DataFrame(coefficients).to_csv(output_dir / "member3_model_coefficients.csv", index=False)
-    lyrics_terms = [f"{c}_std" for c in MODEL2_FEATURES]
-    wald = wald_block(results["Model 2 (audio + lyrics + controls)"], lyrics_terms)
-    wald.update({"method": "cluster-robust Wald chi-square", "alpha": 0.05,
-                 "conclusion": "reject H0" if wald["p_value"] < 0.05 else "fail to reject H0"})
-    (output_dir / "member3_lyrics_joint_wald.json").write_text(json.dumps(wald, indent=2) + "\n", encoding="utf-8")
-    med["test_unique_tracks"] = len(test_ids)
-    med["observed"] = {"total_rows": len(df), "train_rows": int(train_mask.sum()),
-                       "test_rows": int(test_mask.sum()),
-                       "train_market_rows": df[train_mask].groupby("market").size().to_dict(),
-                       "test_market_rows": df[test_mask].groupby("market").size().to_dict(),
-                       "fair_comparison_train_rows": int(train_mask.sum()),
-                       "fair_comparison_test_rows": int(test_mask.sum())}
-    (output_dir / "member3_model_run_summary.json").write_text(json.dumps(med, indent=2) + "\n", encoding="utf-8")
-    return {"medians": med, "comparison": score_rows, "wald": wald}
+    pd.concat(metric_frames, ignore_index=True).to_csv(
+        output_dir / "member3_model_test_metrics.csv", index=False
+    )
+    coefficient_rows = []
+    for model_name, result in fitted.items():
+        confidence = result.conf_int()
+        for term in result.params.index:
+            coefficient_rows.append({
+                "model": model_name,
+                "term": term,
+                "coefficient": float(result.params[term]),
+                "cluster_se": float(result.bse[term]),
+                "p_value": float(result.pvalues[term]),
+                "ci_lower": float(confidence.loc[term, 0]),
+                "ci_upper": float(confidence.loc[term, 1]),
+            })
+    pd.DataFrame(coefficient_rows).to_csv(
+        output_dir / "member3_model_coefficients.csv", index=False
+    )
+    (output_dir / "member3_lyrics_joint_wald.json").write_text(
+        json.dumps(lyrics_wald, indent=2) + "\n", encoding="utf-8"
+    )
+
+    excluded_tracks = split.meta.get("excluded_tracks", [])
+    run_summary = {
+        "source_pipeline": "src.features.prepare_features.get_split()",
+        "data_source": (
+            "not exposed by SplitResult; this run's loader log reported "
+            "the local fallback data/processed/modeling_dataset.csv (cache)"
+        ),
+        "source_rows_before_canonical_cleaning": int(
+            split.meta.get("initial_rows", len(split.X_train) + len(split.X_test))
+        ),
+        "total_rows_returned_by_get_split": int(len(split.X_train) + len(split.X_test)),
+        "historical_snapshot_rows": 2098,
+        "current_and_historical_snapshots_differ": True,
+        "historical_2098_row_snapshot_available": False,
+        "canonical_results_verified_on_historical_snapshot": False,
+        "historical_snapshot_limitation": (
+            "This run used the local CSV fallback with 2,856 observations. The historical 2,098-row "
+            "snapshot is not currently available, so canonical results on that snapshot have not been verified."
+        ),
+        "rows_after_canonical_cleaning": int(
+            split.meta.get("cleaned_rows", len(split.X_train) + len(split.X_test))
+        ),
+        "train_observations": int(len(split.X_train)),
+        "test_observations": int(len(split.X_test)),
+        "train_unique_track_ids": int(split.ids_train.nunique()),
+        "test_unique_track_ids": int(split.ids_test.nunique()),
+        "train_track_market_observations": int(len(split.raw_train)),
+        "test_track_market_observations": int(len(split.raw_test)),
+        "model1_features": m1_features,
+        "model2_features": m2_features,
+        "interaction_terms_excluded": True,
+        "model1_model2_observations_identical": True,
+        "canonical_preprocessing": {
+            "lyrics_rows_dropped_when_all_lyrics_null_or_word_count_null": True,
+            "chorus_repetition_count_missing_values_filled_with": 0.0,
+            "other_required_nulls": "raise an error after cleaning",
+            "word_count_transform": "log1p",
+            "release_year_transform": "lower winsorization at Train 1st percentile",
+            "continuous_scaling": "StandardScaler fit on Train only, applied to Train and Test",
+            "additional_model_preprocessing": "none",
+        },
+        "excluded_rows_reported_by_get_split": int(len(excluded_tracks)),
+        "excluded_tracks": excluded_tracks,
+        "drop_provenance_limitations": (
+            "get_split reports excluded track IDs, titles, markets, scores, and a reason; "
+            "it does not provide source-row identifiers or a full audit of all upstream filtering."
+        ),
+        "source_row_count_meta_note": (
+            "get_split metadata records input and cleaned rows separately; total_rows_returned_by_get_split "
+            "is the retained Train plus Test observation count."
+        ),
+        "split_seed": split.meta.get("seed"),
+        "test_size": split.meta.get("test_size"),
+        "winsorize_year_q01": split.meta.get("winsorize_year_q01"),
+        "comparison": score_rows,
+        "lyrics_joint_wald": lyrics_wald,
+    }
+    (output_dir / "member3_model_run_summary.json").write_text(
+        json.dumps(run_summary, indent=2) + "\n", encoding="utf-8"
+    )
+    return {"comparison": score_rows, "wald": lyrics_wald, "run_summary": run_summary}
 
 
 if __name__ == "__main__":
