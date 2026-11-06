@@ -12,7 +12,7 @@ Trong chuỗi mô hình của đề tài, các Thành viên 1, 2 và 3 đã lầ
 
 Nhiệm vụ của Thành viên 4 là thực hiện hai nội dung đánh giá:
 1. **Permutation Feature Importance (PFI)**: Đánh giá khách quan mức độ phụ thuộc dự báo của mô hình vào từng thuộc tính âm học, ca từ và thời gian trên tập kiểm định ngoài mẫu ($N_{\text{test}} = 410$), sử dụng phương pháp đánh giá dựa trên mức suy giảm hiệu năng dự báo, thay vì phụ thuộc vào Gini Impurity vốn có thể thiên lệch khi đánh giá các biến có nhiều giá trị hoặc nhiều điểm chia tách.
-2. **Out-of-Sample Benchmark & Paired Cluster Bootstrap Test**: So sánh hiệu năng dự báo ngoài mẫu giữa Random Forest (Model 4) và OLS Model 3, đồng thời đo lường độ bất định của mức chênh lệch sai số bằng phương pháp Bootstrap theo cụm bài hát phân tầng cho toàn bộ mẫu ba thị trường và từng thị trường riêng rẽ.
+2. **Out-of-Sample Benchmark & Paired Cluster Bootstrap Test**: So sánh hiệu năng dự báo ngoài mẫu giữa Random Forest (Model 4) và OLS Model 3, đồng thời đo lường độ bất định của mức chênh lệch sai số bằng phương pháp Paired Cluster Bootstrap theo cụm bài hát trên toàn bộ tập Test, sau đó đánh giá riêng kết quả Overall và từng thị trường.
 
 ---
 
@@ -41,11 +41,11 @@ Nhiệm vụ của Thành viên 4 là thực hiện hai nội dung đánh giá:
 
 ## 2. CODE THỰC THI & LƯU KẾT QUẢ
 
-Đoạn mã Python dưới đây thực hiện quy trình đánh giá và so sánh hiệu năng dự báo ngoài mẫu giữa Random Forest và OLS Model 3. Mã sử dụng các dự đoán đã được lưu trong `models/test_predictions.csv`, tính toán các chỉ số đánh giá, thực hiện Paired Cluster Bootstrap phân tầng cho Overall và từng thị trường (VN, US, KR), lưu kết quả vào `reports/rf_vs_ols_paired_bootstrap.csv` và tự động xuất biểu đồ so sánh ở độ phân giải 300 DPI.
+Đoạn mã Python dưới đây thực hiện quy trình đánh giá và so sánh hiệu năng dự báo ngoài mẫu giữa Random Forest và OLS Model 3. Mã sử dụng các dự đoán đã được lưu trong `models/test_predictions.csv`, tính toán các chỉ số đánh giá, thực hiện Paired Cluster Bootstrap theo phương pháp lấy mẫu toàn cục của Member 1, sau đó lọc kết quả theo Overall và từng thị trường (VN, US, KR), lưu kết quả vào `reports/rf_vs_ols_paired_bootstrap.csv` và tự động xuất biểu đồ so sánh ở độ phân giải 300 DPI.
 
 ```python
 """
-Execution Script: Member 4 Benchmark & Stratified Cluster Paired Bootstrap Test
+Execution Script: Member 4 Benchmark & Paired Cluster Bootstrap Test (Member 1 Methodology)
 Dataset: models/test_predictions.csv (N=410, 3 markets)
 Outputs:
   - reports/rf_vs_ols_paired_bootstrap.csv (Bảng CI Bootstrap chính thức)
