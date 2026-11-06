@@ -23,13 +23,19 @@ Mục tiêu trọng tâm của Thành viên 4 gồm hai bài toán kiểm địn
 * **Giả thuyết $H_1$:** Việc hoán vị ngẫu nhiên giá trị của đặc trưng $X_j$ làm gia tăng sai số dự báo một cách đáng kể ($\Delta\text{MAE}_{X_j} > 0$).
 * **Tiêu chuẩn bác bỏ:** Bác bỏ $H_0$ nếu mức tăng sai số trung bình qua 10 lượt hoán vị độc lập $\mu(\Delta\text{MAE}_{X_j}) - 2 \cdot \sigma > 0$.
 
-#### Bài test 2: Kiểm định Paired Bootstrap So sánh Ngoài Mẫu (RF vs. OLS M3)
-* **Giả thuyết $H_0$:** Không có sự khác biệt có ý nghĩa thống kê về sai số dự báo ngoài mẫu giữa Model 4 (Random Forest) và Model 3 (OLS Full Model):
-  $$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}} = 0 \quad \text{và} \quad \Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}} = 0$$
-* **Giả thuyết $H_1$:** Tồn tại sự vượt trội thực chất của Model 4 so với Model 3 trên tập ngoài mẫu:
-  $$\Delta R^2 > 0 \quad \text{hoặc} \quad \Delta\text{MAE} > 0$$
-* **Phương pháp kiểm định:** Phân tích Paired Bootstrap $B = 1,000$ lần lặp có phân cụm theo bài hát (`spotify_track_id`) để bảo toàn cấu trúc tương quan chuỗi thời gian giữa các tuần. Khoảng tin cậy 95% (95% CI) được xác định qua bách phân vị $[2.5\%, 97.5\%]$. Bác bỏ $H_0$ khi và chỉ khi 95% CI không chứa giá trị $0$.
+#### Bài test 2: Kiểm định Paired Bootstrap So sánh Ngoài mẫu (RF vs. OLS M3)
 
+* **Giả thuyết $H_0$:** Random Forest không có sai số dự báo thấp hơn OLS Model 3 trên tập ngoài mẫu:
+
+  $$\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}} \leq 0$$
+
+* **Giả thuyết $H_1$:** Random Forest có sai số dự báo ngoài mẫu thấp hơn OLS Model 3:
+
+  $$\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}} > 0$$
+
+* **Chỉ tiêu đánh giá bổ sung:** Chênh lệch $R^2$ giữa hai mô hình được sử dụng để mô tả mức độ giải thích biến thiên của dữ liệu, không phải tiêu chí chính để kết luận giả thuyết.
+
+* **Phương pháp kiểm định:** Phân tích Paired Bootstrap $B = 1,000$ lần lặp có phân cụm theo bài hát (`spotify_track_id`) để bảo toàn cấu trúc tương quan chuỗi thời gian giữa các tuần. Khoảng tin cậy 95% (95% CI) được xác định qua bách phân vị $[2.5\\%, 97.5\\%]$. Bác bỏ $H_0$ theo hướng RF vượt trội khi cận dưới của khoảng tin cậy 95% của $\Delta\text{MAE}$ lớn hơn $0$.
 ---
 
 ## 2. CODE THỰC THI & LƯU BIỂU ĐỒ
@@ -195,25 +201,37 @@ Biểu đồ đối chứng trực diện hệ số xác định ngoài mẫu ($
 
 ### 5.1. Kết luận về Permutation Feature Importance
 
-Kết quả phân tích Permutation Feature Importance cho thấy `release_year` là biến có mức độ đóng góp vào khả năng dự báo nổi bật nhất, với Mean Importance đạt **3.462**. Giá trị này cao hơn khoảng **52.5 lần** so với `rms_variability` (0.066) và khoảng **64.1 lần** so với `avg_word_length` (0.054).
+Kết quả Permutation Feature Importance cho thấy `release_year` có mức Mean Importance cao nhất, đạt **3.462** với độ lệch chuẩn **0.580**. Theo tiêu chí đánh giá được xác định tại Mục 1.2, chỉ biến `release_year` thỏa mãn điều kiện:
 
-Trong nhóm đặc trưng âm học, `rms_variability` và `spectral_bandwidth` cùng đạt mức importance 0.066, trong khi `chroma_longest_pattern_duration` đạt 0.044. Đối với nhóm đặc trưng ca từ, `avg_word_length` đạt 0.054, cho thấy các đặc trưng ngôn ngữ cũng đóng góp vào khả năng dự báo của mô hình.
+\[
+\mu - 2\sigma > 0
+\]
 
-Nhìn chung, kết quả cho thấy yếu tố thời điểm phát hành có vai trò nổi bật trong việc dự đoán hiệu suất bài hát trên bảng xếp hạng. Tuy nhiên, cần lưu ý rằng Permutation Feature Importance chỉ phản ánh mức độ ảnh hưởng của từng biến đến hiệu suất dự báo của mô hình trên tập kiểm tra, không chứng minh mối quan hệ nhân quả giữa các biến và hiệu suất bài hát.
+Cụ thể:
+
+\[
+3.462 - 2(0.580) = 2.302 > 0
+\]
+
+Đối với 9 biến còn lại, mặc dù Mean Importance đều có giá trị dương, nhưng không biến nào thỏa mãn tiêu chí trên. Điều này cho thấy mức độ quan trọng trung bình của các biến âm học và ca từ chưa đủ để phân biệt rõ ràng với nhiễu hoán vị theo quy tắc đánh giá đã chọn.
+
+Đáng chú ý, `rms_variability` và `spectral_bandwidth` có Mean Importance lần lượt là 0.066 và 0.066; `avg_word_length` đạt 0.054. Tuy nhiên, không nên diễn giải các giá trị này thành bằng chứng rằng những đặc trưng đó có đóng góp dự báo ổn định theo tiêu chí kiểm định.
+
+Nhìn chung, `release_year` là biến duy nhất vượt qua ngưỡng đánh giá bảo thủ trong phân tích này. Kết quả chỉ phản ánh mức độ hữu ích của biến đối với khả năng dự báo của Random Forest trên tập Test, không chứng minh mối quan hệ nhân quả.
 
 ### 5.2. Đánh giá hiệu quả mô hình theo từng thị trường
 
 Kết quả benchmark cho thấy hiệu suất của Random Forest (RF) khác nhau giữa ba thị trường VN, US và KR.
 
-- **Vietnam (VN):** RF đạt kết quả cải thiện rõ rệt so với OLS. R² tăng từ 2.54% lên 13.35%, tương đương khoảng 5.25 lần. MAE giảm từ 35.82 xuống 33.66, tức giảm 2.16 điểm (khoảng 6.03%). Điều này cho thấy RF có khả năng nắm bắt một số mối quan hệ phi tuyến hoặc tương tác giữa các đặc trưng tốt hơn OLS trong dữ liệu VN.
+- **Vietnam (VN):** Trên tập Test quan sát được, RF đạt $R^2 = 13.35\\%$, cao hơn OLS với $R^2 = 2.54\\%$. MAE giảm từ 35.82 xuống 33.66, tương ứng giảm 2.16 điểm. Đây là mức cải thiện đáng chú ý về mặt mô tả, gợi ý RF có thể nắm bắt một số quan hệ mà OLS chưa thể hiện tốt trong dữ liệu VN.
 
-- **United States (US):** RF chỉ cải thiện nhẹ so với OLS. R² tăng từ 2.85% lên 3.12%, trong khi MAE giảm từ 27.64 xuống 27.13. Mức cải thiện này tương đối nhỏ.
+- **United States (US):** RF cải thiện nhẹ so với OLS. $R^2$ tăng từ 2.85\\% lên 3.12\\%, trong khi MAE giảm từ 27.64 xuống 27.13.
 
-- **South Korea (KR):** OLS có kết quả tốt hơn RF. R² của OLS đạt 3.84%, cao hơn mức 2.81% của RF. MAE của OLS cũng thấp hơn, 27.77 so với 28.09 của RF.
+- **South Korea (KR):** OLS có kết quả tốt hơn RF. $R^2$ của OLS đạt 3.84\\%, cao hơn mức 2.81\\% của RF. MAE của OLS cũng thấp hơn, 27.77 so với 28.09.
 
-Mặc dù RF cho thấy kết quả tích cực tại thị trường VN và cải thiện nhẹ tại US, kết quả Paired Bootstrap trên toàn bộ dữ liệu cho thấy khoảng tin cậy 95% của chênh lệch R² và MAE đều chứa giá trị 0. Vì vậy, chưa có đủ bằng chứng thống kê để kết luận RF vượt trội OLS một cách có ý nghĩa trên toàn bộ dữ liệu.
+Mặc dù RF cho kết quả dự báo tốt hơn OLS trên tập Test tại VN và cải thiện nhẹ tại US, các kết quả này chỉ mang tính mô tả theo từng thị trường. Kiểm định Paired Bootstrap hiện tại được thực hiện trên toàn bộ tập Test, chưa cung cấp khoảng tin cậy riêng cho từng thị trường. Vì vậy, chưa thể kết luận mức cải thiện tại VN có ý nghĩa thống kê hoặc khẳng định nguyên nhân là do quan hệ phi tuyến.
 
-Nhìn chung, hiệu suất mô hình phụ thuộc vào đặc điểm của từng thị trường. Kết quả tại VN gợi ý rằng các mối quan hệ phi tuyến hoặc tương tác giữa đặc trưng có thể đóng vai trò quan trọng, tuy nhiên cần nghiên cứu thêm để xác nhận giả thuyết này.
+Nhìn chung, hiệu suất của mô hình có sự khác biệt giữa các thị trường. Kết quả này gợi ý cần tiếp tục nghiên cứu đặc điểm dữ liệu và cấu trúc dự báo riêng của từng thị trường.
 
 ### 5.3. Ý nghĩa của việc kết hợp OLS và Random Forest
 
