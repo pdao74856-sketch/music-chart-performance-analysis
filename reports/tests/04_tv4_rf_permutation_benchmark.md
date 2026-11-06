@@ -144,19 +144,25 @@ Biểu đồ đối chứng trực diện hệ số xác định ngoài mẫu ($
 ## 4. BẢNG KẾT QUẢ THỐNG KÊ CỐT LÕI
 
 
+
 ### 4.1. Bảng Tầm quan trọng Biến Hoán vị (Permutation Feature Importance) trên Test Set ($N = 410$)
 
-Đo lường mức tăng của Mean Absolute Error ($\Delta\text{MAE}$) khi xáo trộn từng biến. Tên biến và điểm importance được đối chiếu với `reports/report5/rf_benchmark_metrics.json`.
+Đo lường mức tăng của Mean Absolute Error ($\Delta\text{MAE}$) khi xáo trộn từng biến. Tên biến, Mean Importance và Standard Deviation được đối chiếu trực tiếp với `reports/report5/rf_benchmark_metrics.json`.
 
-| Thứ hạng | Đặc trưng độc lập (Feature) | Nhóm biến | Mean Importance ($\Delta\text{MAE}$) | Kết luận thống kê |
-| :---: | :--- | :--- | :---: | :--- |
-| **1** | `release_year` | Metadata / Thời gian | **3.462** | Biến quan trọng áp đảo toàn diện. |
-| **2** | `rms_variability` | Âm học (Audio) | **0.066** | Một trong hai biến có importance cao nhất trong nhóm đặc trưng còn lại. |
-| **3** | `spectral_bandwidth` | Âm học (Audio) | **0.066** | Một trong hai biến có importance cao nhất trong nhóm đặc trưng còn lại. |
-| **4** | `avg_word_length` | Ca từ (Lyrics / NLP) | **0.054** | Biến NLP có importance cao nhất. |
-| **5** | `chroma_longest_pattern_duration` | Âm học (Audio / RQA) | **0.044** | Đặc trưng thời lượng mẫu chroma dài nhất. |
+| Thứ hạng | Đặc trưng độc lập (Feature) | Nhóm biến | Mean Importance ($\Delta\text{MAE}$) | Std Deviation |
+| :---: | :--- | :--- | :---: | :---: |
+| **1** | `release_year` | Metadata / Thời gian | **3.462** | $\pm 0.580$ |
+| **2** | `rms_variability` | Âm học (Audio) | **0.066** | $\pm 0.046$ |
+| **3** | `spectral_bandwidth` | Âm học (Audio) | **0.066** | $\pm 0.036$ |
+| **4** | `avg_word_length` | Ca từ (Lyrics / NLP) | **0.054** | $\pm 0.068$ |
+| **5** | `chroma_longest_pattern_duration` | Âm học (Audio / RQA) | **0.044** | $\pm 0.025$ |
+| **6** | `energy` | Âm học (Audio) | **0.032** | $\pm 0.020$ |
+| **7** | `loudness_proxy` | Âm học (Audio) | **0.020** | $\pm 0.015$ |
+| **8** | `punctuation_ratio` | Ca từ (Lyrics / NLP) | **0.014** | $\pm 0.039$ |
+| **9** | `Market_VN` | Dummy Thị trường | **0.014** | $\pm 0.015$ |
+| **10** | `onset_rate` | Âm học (Audio / Rhythm) | **0.007** | $\pm 0.108$ |
 
-> **Nhận định then chốt 1:** Biến thời gian phát hành (`release_year`, importance = 3.462) có mức importance vượt trội so với các biến âm học và ca từ. Trong đó, `rms_variability` và `spectral_bandwidth` cùng đạt 0.066, `avg_word_length` đạt 0.054 và `chroma_longest_pattern_duration` đạt 0.044. Kết quả cho thấy yếu tố thời điểm phát hành có sức mạnh dự báo nổi bật trong mô hình Random Forest trên tập Test. Đây là mức độ quan trọng dự báo, không đồng nghĩa với quan hệ nhân quả.
+> **Nhận định then chốt 1:** Biến thời gian phát hành (`release_year`, importance = 3.462) có mức importance lớn hơn khoảng **52.5 lần** so với biến âm học đứng đầu (`rms_variability`, 0.066), và khoảng **64.1 lần** so với biến ca từ đứng đầu (`avg_word_length`, 0.054). Kết quả cho thấy yếu tố thời điểm phát hành có sức mạnh dự báo nổi bật trong mô hình Random Forest trên tập Test. Đây là kết quả về mức độ quan trọng dự báo, không tự nó chứng minh quan hệ nhân quả.
 
 ---
 
