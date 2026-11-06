@@ -30,10 +30,12 @@ Nhiệm vụ của Thành viên 4 là thực hiện hai nội dung đánh giá:
 * **Giả thuyết $H_1$:** Random Forest có sai số dự báo ngoài mẫu thấp hơn OLS Model 3 có ý nghĩa thống kê:
   $$\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}} > 0$$
 * **Chỉ tiêu mô tả bổ sung:** Chênh lệch hệ số xác định $\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ được báo cáo để mô tả mức độ giải thích biến thiên phương sai bổ sung (không phải tiêu chí chính để bác bỏ $H_0$).
-* **Quy tắc kiểm định phân tầng (Stratified Cluster Bootstrap):**
-  * **Toàn bộ mẫu ba thị trường (Overall):** Lấy mẫu cụm theo `spotify_track_id` trên toàn bộ tập Test ($N = 410$, $382$ cụm bài hát độc nhất).
-  * **Từng thị trường (VN, US, KR):** Lấy mẫu cụm phân tầng trực tiếp trên tập con của chính thị trường đó (VN: $N=105$; US: $N=165$; KR: $N=140$). Số bài hát ở mỗi lần lặp được bảo toàn cố định, loại bỏ biến thiên ngẫu nhiên kích thước mẫu thị trường.
-  * $B = 1,000$ lần lặp, cố định `seed=43`. Khoảng tin cậy 95% hai phía (95% CI) được tính theo phân vị $[2.5\%, 97.5\%]$. Việc yêu cầu cận dưới của khoảng tin cậy hai phía 95% lớn hơn 0 là một quy tắc kết luận bảo thủ đối với giả thuyết một phía $H_1$ ở mức ý nghĩa $\alpha = 0.05$.
+* **Quy trình lấy mẫu cụm (Paired Cluster Bootstrap):**
+  * Tạo 1,000 bộ chỉ số Bootstrap bằng cách lấy mẫu có hoàn lại các `spotify_track_id` duy nhất trên toàn bộ tập Test.
+  * Mỗi lần lấy mẫu, toàn bộ các dòng thuộc một bài hát được giữ cùng nhau, bảo toàn cấu trúc cụm theo bài hát.
+  * Sử dụng cùng một bộ chỉ số Bootstrap cho cả OLS Model 3 và Random Forest, bảo đảm phép so sánh là paired.
+  * Các bộ chỉ số Bootstrap được tái sử dụng khi tính kết quả Overall, VN, US và KR, bằng cách lọc các dòng thuộc từng thị trường sau khi lấy mẫu. Cỡ mẫu của từng thị trường trong mỗi lần lặp có thể thay đổi do các thị trường được lọc từ cùng bộ mẫu Bootstrap toàn cục. Cách làm này thống nhất với quy trình lấy mẫu của Member 1.
+  * $B = 1,000$ lần lặp, cố định `seed=43`. Khoảng tin cậy 95% hai phía được tính theo phân vị $[2.5\%, 97.5\%]$. Việc yêu cầu cận dưới của khoảng tin cậy hai phía 95% lớn hơn 0 là một quy tắc kết luận bảo thủ đối với giả thuyết một phía $H_1$ ở mức ý nghĩa $\alpha = 0.05$.
 
 ---
 
@@ -59,69 +61,83 @@ from sklearn.metrics import mean_absolute_error, r2_score
 df_test = pd.read_csv('models/test_predictions.csv')
 print(f"Loaded Test Set: N = {len(df_test)} observations across {df_test['market'].nunique()} markets.")
 
-# 2. Hàm chạy Paired Cluster Bootstrap phân tầng theo từng phạm vi
-def run_cluster_bootstrap(sub_df, n_boot=1000, seed=43):
-    ids = sub_df['spotify_track_id'].values
-    unique_tracks = np.unique(ids)
-    n_tracks = len(unique_tracks)
-    rng = np.random.default_rng(seed)
-    
-    track_to_indices = {}
-    for idx, tid in enumerate(ids):
-        track_to_indices.setdefault(tid, []).append(idx)
-        
-    y_true = sub_df['chart_score_actual'].values
-    y_ols = sub_df['pred_ols_m3'].values
-    y_rf = sub_df['pred_rf'].values
-    
-    # Điểm ước lượng thực tế trên mẫu ban đầu (Observed Point Estimates)
-    obs_delta_mae = mean_absolute_error(y_true, y_ols) - mean_absolute_error(y_true, y_rf)
-    obs_delta_r2 = r2_score(y_true, y_rf) - r2_score(y_true, y_ols)
-    
+# 2. Chuẩn bị các phạm vi đánh giá
+n_boot = 1000
+seed = 43
+samples_dict = {
+    "Overall": np.ones(len(df_test), dtype=bool),
+    "VN": df_test["market"].values == "VN",
+    "US": df_test["market"].values == "US",
+    "KR": df_test["market"].values == "KR",
+}
+
+# 3. Tạo bootstrap indices MỘT LẦN theo phương pháp Member 1
+unique_tracks = df_test["spotify_track_id"].unique()
+n_tracks = len(unique_tracks)
+rng = np.random.default_rng(seed)
+
+track_to_indices = {}
+for idx, tid in enumerate(df_test["spotify_track_id"]):
+    track_to_indices.setdefault(tid, []).append(idx)
+
+boot_indices_list = []
+for _ in range(n_boot):
+    sample_tracks = rng.choice(unique_tracks, size=n_tracks, replace=True)
+    idx_pool = []
+    for track_id in sample_tracks:
+        idx_pool.extend(track_to_indices[track_id])
+    boot_indices_list.append(np.array(idx_pool))
+
+# 4. Thực thi Paired Bootstrap cho từng phạm vi
+y_test = df_test["chart_score_actual"].values
+pred_m3 = df_test["pred_ols_m3"].values
+pred_rf = df_test["pred_rf"].values
+
+results = []
+for scope, mask in samples_dict.items():
+    yt_obs = y_test[mask]
+    yo_obs = pred_m3[mask]
+    yr_obs = pred_rf[mask]
+
+    obs_delta_mae = mean_absolute_error(yt_obs, yo_obs) - mean_absolute_error(yt_obs, yr_obs)
+    obs_delta_r2 = r2_score(yt_obs, yr_obs) - r2_score(yt_obs, yo_obs)
+
     delta_r2_list = []
     delta_mae_list = []
-    
-    for _ in range(n_boot):
-        sample_tracks = rng.choice(unique_tracks, size=n_tracks, replace=True)
-        idx_pool = []
-        for st in sample_tracks:
-            idx_pool.extend(track_to_indices[st])
-        idx_arr = np.array(idx_pool)
-        
-        yt = y_true[idx_arr]
-        yo = y_ols[idx_arr]
-        yr = y_rf[idx_arr]
-        
+
+    for b_idx in boot_indices_list:
+        sub_mask = mask[b_idx]
+        if not np.any(sub_mask):
+            continue
+        idx_sub = b_idx[sub_mask]
+
+        yt = y_test[idx_sub]
+        yo = pred_m3[idx_sub]
+        yr = pred_rf[idx_sub]
+
         delta_r2_list.append(r2_score(yt, yr) - r2_score(yt, yo))
         delta_mae_list.append(mean_absolute_error(yt, yo) - mean_absolute_error(yt, yr))
-        
+
     ci_r2 = np.percentile(delta_r2_list, [2.5, 97.5])
     ci_mae = np.percentile(delta_mae_list, [2.5, 97.5])
-    
-    return {
-        'obs_delta_r2': obs_delta_r2,
-        'delta_r2_bootstrap_mean': np.mean(delta_r2_list),
-        'delta_r2_ci_lower': ci_r2[0],
-        'delta_r2_ci_upper': ci_r2[1],
-        'obs_delta_mae': obs_delta_mae,
-        'delta_mae_bootstrap_mean': np.mean(delta_mae_list),
-        'delta_mae_ci_lower': ci_mae[0],
-        'delta_mae_ci_upper': ci_mae[1]
-    }
 
-# 3. Thực thi Bootstrap cho Overall và phân tầng từng thị trường
-results = []
-scopes = ['Overall', 'VN', 'US', 'KR']
-for scope in scopes:
-    sub = df_test if scope == 'Overall' else df_test[df_test['market'] == scope].reset_index(drop=True)
-    res = run_cluster_bootstrap(sub, n_boot=1000, seed=43)
-    res['scope'] = scope
-    res['n_obs'] = len(sub)
-    res['n_unique_tracks'] = int(sub['spotify_track_id'].nunique())
+    res = {
+        "scope": scope,
+        "n_obs": int(np.sum(mask)),
+        "n_unique_tracks": int(df_test.loc[mask, "spotify_track_id"].nunique()),
+        "obs_delta_r2": obs_delta_r2,
+        "delta_r2_bootstrap_mean": np.mean(delta_r2_list),
+        "delta_r2_ci_lower": ci_r2[0],
+        "delta_r2_ci_upper": ci_r2[1],
+        "obs_delta_mae": obs_delta_mae,
+        "delta_mae_bootstrap_mean": np.mean(delta_mae_list),
+        "delta_mae_ci_lower": ci_mae[0],
+        "delta_mae_ci_upper": ci_mae[1],
+    }
     results.append(res)
     print(f"Scope: {scope:7s} | Observed Delta MAE = {res['obs_delta_mae']:+.4f} | Bootstrap Mean = {res['delta_mae_bootstrap_mean']:+.4f} | 95% CI = [{res['delta_mae_ci_lower']:+.4f}, {res['delta_mae_ci_upper']:+.4f}]")
 
-# 4. Xuất kết quả Bootstrap chính thức ra CSV
+# 5. Xuất kết quả Bootstrap chính thức ra CSV
 os.makedirs('reports', exist_ok=True)
 bootstrap_df = pd.DataFrame(results)
 bootstrap_df.to_csv('reports/rf_vs_ols_paired_bootstrap.csv', index=False)
@@ -248,15 +264,15 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
 
 ---
 
-### 4.3. Bảng Kiểm định Paired Cluster Bootstrap Phân Tầng ($B = 1,000$ iterations, seed=43)
-*(Kết quả đối chiếu với `reports/rf_vs_ols_paired_bootstrap.csv`. Lấy mẫu cụm theo `spotify_track_id`, phân tầng độc lập theo từng thị trường để bảo toàn cỡ mẫu)*:
+### 4.3. Bảng Kiểm định Paired Cluster Bootstrap Theo Cụm Bài Hát ($B = 1,000$ iterations, seed=43)
+*(Kết quả đối chiếu với `reports/rf_vs_ols_paired_bootstrap.csv`. Lấy mẫu cụm theo `spotify_track_id` trên toàn bộ tập Test; sử dụng chung các bộ chỉ số Bootstrap cho OLS và Random Forest, sau đó lọc theo từng thị trường để tính kết quả)*:
 
 | Phạm vi Mẫu (Scope) | Kích thước Mẫu ($N$) | Số Cụm Bài Hát (Tracks) | Tiêu chí Kiểm định (RF vs. OLS M3) | Điểm Ước lượng Thực tế ($\Delta_{\text{obs}}$) | Trung bình Bootstrap (1,000 lần lặp) | Khoảng Tin cậy 95% Bootstrap (95% CI) | Chứa giá trị $0$? | Kết luận Thống kê ($\alpha = 0.05$) |
 | :--- | :---: | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Toàn bộ Test (Overall)** | **410** | **382** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.6505$** pts<br>$+3.46\%$ | **$+0.6315$** pts<br>$+0.0335$ ($+3.35\%$) | **$[-0.6602, \, +1.9767]$**<br>$[-0.0377, \, +0.0997]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Mức giảm sai số của RF chưa đủ bằng chứng thống kê để khẳng định trên toàn bộ mẫu kiểm định gồm ba thị trường. |
-| **Việt Nam (VN)** | **105** | **105** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+2.1633$** pts<br>$+10.81\%$ | **$+2.1521$** pts<br>$+0.1074$ ($+10.74\%$) | **$[-0.2832, \, +4.4728]$**<br>$[-0.0133, \, +0.2144]$ | **CÓ**<br>CÓ | Mức giảm sai số đạt $+2.16$ điểm MAE và $R^2$ tăng $+10.81\%$, tuy nhiên khoảng tin cậy 95% vẫn chứa giá trị 0 nên chưa đủ bằng chứng bác bỏ $H_0$. |
-| **Hoa Kỳ (US)** | **165** | **165** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.5114$** pts<br>$+0.28\%$ | **$+0.5117$** pts<br>$+0.0011$ ($+0.11\%$) | **$[-1.9387, \, +3.0100]$**<br>$[-0.1580, \, +0.1436]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Kết quả chưa cho thấy sự khác biệt rõ ràng về hiệu năng dự báo giữa OLS và Random Forest tại thị trường Mỹ. |
-| **Hàn Quốc (KR)** | **140** | **140** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$-0.3200$** pts<br>$-1.03\%$ | **$-0.3687$** pts<br>$-0.0128$ ($-1.28\%$) | **$[-2.3154, \, +1.5649]$**<br>$[-0.1199, \, +0.0864]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. OLS nhỉnh hơn nhẹ nhưng khoảng tin cậy bao quanh 0. |
+| **Toàn bộ Test (Overall)** | **410** | **382** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.6505$** pts<br>$+3.46\%$ | **$+0.6578$** pts<br>$+0.0338$ ($+3.38\%$) | **$[-0.8057, \, +2.0268]$**<br>$[-0.0377, \, +0.1053]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Mức giảm sai số của RF chưa đủ bằng chứng thống kê để khẳng định trên toàn bộ mẫu kiểm định gồm ba thị trường. |
+| **Việt Nam (VN)** | **105** | **105** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+2.1633$** pts<br>$+10.81\%$ | **$+2.1923$** pts<br>$+0.1086$ ($+10.86\%$) | **$[-0.2869, \, +4.7392]$**<br>$[-0.0207, \, +0.2261]$ | **CÓ**<br>CÓ | Mức giảm sai số đạt $+2.16$ điểm MAE và $R^2$ tăng $+10.81\%$, tuy nhiên khoảng tin cậy 95% vẫn chứa giá trị 0 nên chưa đủ bằng chứng bác bỏ $H_0$. |
+| **Hoa Kỳ (US)** | **165** | **165** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$+0.5114$** pts<br>$+0.28\%$ | **$+0.5230$** pts<br>$+0.0007$ ($+0.07\%$) | **$[-1.8933, \, +3.0311]$**<br>$[-0.1545, \, +0.1515]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. Kết quả chưa cho thấy sự khác biệt rõ ràng về hiệu năng dự báo giữa OLS và Random Forest tại thị trường Mỹ. |
+| **Hàn Quốc (KR)** | **140** | **140** | $\Delta\text{MAE} = \text{MAE}_{\text{OLS}} - \text{MAE}_{\text{RF}}$ (chính)<br>$\Delta R^2 = R^2_{\text{RF}} - R^2_{\text{OLS}}$ (bổ sung) | **$-0.3200$** pts<br>$-1.03\%$ | **$-0.3301$** pts<br>$-0.0131$ ($-1.31\%$) | **$[-2.2928, \, +1.5599]$**<br>$[-0.1194, \, +0.0814]$ | **CÓ**<br>CÓ | **Chưa đủ bằng chứng bác bỏ $H_0$**. OLS nhỉnh hơn nhẹ nhưng khoảng tin cậy bao quanh 0. |
 
 ---
 
@@ -268,7 +284,7 @@ Biểu đồ đối chứng tỷ lệ phương sai giải thích ($R^2$) và sai
    * Kết quả phản ánh mức độ phụ thuộc dự báo của mô hình vào thông tin năm phát hành, không chứng minh quan hệ nhân quả giữa năm phát hành và thành công thương mại của bài hát. Tất cả 9 đặc trưng còn lại, bao gồm các biến âm học, ca từ và biến kiểm soát thị trường, đều có $\mu - 2\sigma < 0$, cho thấy mức độ đóng góp đơn lẻ của từng đặc trưng chưa đủ để tách biệt rõ ràng khỏi nhiễu hoán vị trên tập Test.
 2. **Tín hiệu cải thiện dự báo của Random Forest tại thị trường Việt Nam:**
    * Trên mẫu kiểm định Việt Nam, Random Forest ghi nhận mức tăng $R^2$ điểm mẫu từ $2.54\%$ lên $13.35\%$ ($+10.81$ điểm phần trăm) và giảm MAE khoảng $2.16$ điểm so với OLS Model 3.
-   * Tuy nhiên, khoảng tin cậy Bootstrap 95% của cả $\Delta\text{MAE}$ ($[-0.2832, \, +4.4728]$) và $\Delta R^2$ ($[-0.0133, \, +0.2144]$) đều chứa giá trị $0$. Vì vậy, đây là kết quả mô tả mang tính gợi mở thực nghiệm, chưa đủ bằng chứng để kết luận Random Forest vượt trội có ý nghĩa thống kê tại thị trường Việt Nam.
+   * Tuy nhiên, theo phân tích Paired Cluster Bootstrap toàn cục theo phương pháp Member 1, khoảng tin cậy 95% của cả $\Delta\text{MAE}$ ($[-0.2869, \, +4.7392]$) và $\Delta R^2$ ($[-0.0207, \, +0.2261]$) đều chứa giá trị $0$. Vì vậy, đây là kết quả mô tả mang tính gợi mở thực nghiệm, chưa đủ bằng chứng để kết luận Random Forest vượt trội có ý nghĩa thống kê tại thị trường Việt Nam.
 3. **Phối hợp Song hành Tuyến tính – Phi tuyến trên Web App (Streamlit Dual-Model Architecture):**
    * Đề tài đề xuất mô hình ứng dụng kết hợp: OLS Model 3 đảm nhiệm vai trò **giải thích kinh tế lượng (Inference & Interpretability)** thông qua các hệ số hồi quy và kết quả kiểm định thống kê trong khuôn khổ các giả định của mô hình; trong khi Model 4 Random Forest đóng vai trò **công cụ mô phỏng dự báo phi tuyến (Real-time Non-linear Simulator)** phục vụ trực quan hóa trên Tab 2 và Tab 4 của ứng dụng Web.
 
