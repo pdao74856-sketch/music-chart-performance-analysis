@@ -16,9 +16,12 @@ import statsmodels.api as sm
 
 from src.features.prepare_features import SplitResult, get_split
 from src.utils.ols_cluster_fit import fit_ols_cluster, metrics, wald_block
+from src.utils.supabase_client import load_clean_modeling_data
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT_DIR = ROOT / "reports/report4/member3_canonical"
+CACHE_PATH = ROOT / "data/processed/modeling_dataset_clean_cache.csv"
+EXPECTED_CACHE_ROWS = 2098
 
 AUDIO_FEATURES = [
     "tempo_std", "onset_rate_std", "tempo_stability_std", "energy_std",
@@ -35,6 +38,30 @@ LYRICS_FEATURES = [
 CONTROL_FEATURES = ["release_year_std", "Market_VN", "Market_KR"]
 MODEL1_FEATURES = AUDIO_FEATURES + ["mode"] + CONTROL_FEATURES
 MODEL2_FEATURES = MODEL1_FEATURES + LYRICS_FEATURES
+
+
+def load_member3_split() -> SplitResult:
+    """Load the required local clean cache, then apply canonical preprocessing."""
+    if not CACHE_PATH.is_file():
+        raise FileNotFoundError(f"Required Member 3 cache is missing: {CACHE_PATH}")
+
+    df = load_clean_modeling_data(source="local")
+    if len(df) != EXPECTED_CACHE_ROWS:
+        raise ValueError(
+            f"Expected {EXPECTED_CACHE_ROWS} rows from the local cache, got {len(df)}"
+        )
+    if df.attrs.get("data_source") != "cache":
+        raise ValueError(
+            "Local loader did not report the clean cache as its data source: "
+            f"{df.attrs.get('data_source')!r}"
+        )
+
+    split = get_split(df=df)
+    split.meta["data_source"] = "local cache"
+    split.meta["data_path"] = CACHE_PATH.relative_to(ROOT).as_posix()
+    split.meta["data_fingerprint"] = df.attrs.get("data_fingerprint")
+    split.meta["source_rows"] = len(df)
+    return split
 
 
 def _validate_and_select_features(split: SplitResult) -> tuple[list[str], list[str]]:
@@ -72,7 +99,7 @@ def _adjusted_r2(r2: float, n: int, p: int) -> float:
 
 def run(output_dir: Path | None = None) -> dict[str, Any]:
     """Fit and evaluate the two agreed models using the canonical split only."""
-    split = get_split()
+    split = load_member3_split()
     output_dir = Path(output_dir) if output_dir is not None else DEFAULT_OUTPUT_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
     m1_features, m2_features = _validate_and_select_features(split)
@@ -155,22 +182,14 @@ def run(output_dir: Path | None = None) -> dict[str, Any]:
     excluded_tracks = split.meta.get("excluded_tracks", [])
     run_summary = {
         "source_pipeline": "src.features.prepare_features.get_split()",
-        "data_source": (
-            "not exposed by SplitResult; this run's loader log reported "
-            "the local fallback data/processed/modeling_dataset.csv (cache)"
-        ),
+        "data_source": split.meta["data_source"],
+        "data_path": split.meta["data_path"],
+        "data_fingerprint": split.meta["data_fingerprint"],
+        "source_rows": int(split.meta["source_rows"]),
         "source_rows_before_canonical_cleaning": int(
             split.meta.get("initial_rows", len(split.X_train) + len(split.X_test))
         ),
         "total_rows_returned_by_get_split": int(len(split.X_train) + len(split.X_test)),
-        "historical_snapshot_rows": 2098,
-        "current_and_historical_snapshots_differ": True,
-        "historical_2098_row_snapshot_available": False,
-        "canonical_results_verified_on_historical_snapshot": False,
-        "historical_snapshot_limitation": (
-            "This run used the local CSV fallback with 2,856 observations. The historical 2,098-row "
-            "snapshot is not currently available, so canonical results on that snapshot have not been verified."
-        ),
         "rows_after_canonical_cleaning": int(
             split.meta.get("cleaned_rows", len(split.X_train) + len(split.X_test))
         ),
@@ -180,6 +199,9 @@ def run(output_dir: Path | None = None) -> dict[str, Any]:
         "test_unique_track_ids": int(split.ids_test.nunique()),
         "train_track_market_observations": int(len(split.raw_train)),
         "test_track_market_observations": int(len(split.raw_test)),
+        "train_test_track_ids_disjoint": not bool(
+            set(split.ids_train).intersection(set(split.ids_test))
+        ),
         "model1_features": m1_features,
         "model2_features": m2_features,
         "interaction_terms_excluded": True,
@@ -202,6 +224,10 @@ def run(output_dir: Path | None = None) -> dict[str, Any]:
         "source_row_count_meta_note": (
             "get_split metadata records input and cleaned rows separately; total_rows_returned_by_get_split "
             "is the retained Train plus Test observation count."
+        ),
+        "previous_canonical_artifacts_note": (
+            "Previous committed canonical artifacts used the 2,856-row local fallback "
+            "(2,296 Train / 560 Test); this summary records the new 2,098-row cache run."
         ),
         "split_seed": split.meta.get("seed"),
         "test_size": split.meta.get("test_size"),

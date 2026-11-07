@@ -89,8 +89,57 @@ class TestCanonicalLyricsModels(unittest.TestCase):
             meta={"initial_rows": 183, "cleaned_rows": 180, "train_rows": 120,
                   "test_rows": 60, "train_tracks": 120, "test_tracks": 60,
                   "excluded_tracks": [{"spotify_track_id": "dropped", "reason": "test row"}],
-                  "seed": 43, "test_size": 0.2, "winsorize_year_q01": 1998.0},
+                  "seed": 43, "test_size": 0.2, "winsorize_year_q01": 1998.0,
+                  "data_source": "local cache",
+                  "data_path": "data/processed/modeling_dataset_clean_cache.csv",
+                  "data_fingerprint": "fake-fingerprint", "source_rows": 183},
         )
+
+    def test_load_member3_split_forces_local_loader_and_passes_dataframe(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache_path = Path(temp_dir) / "modeling_dataset_clean_cache.csv"
+            cache_path.touch()
+            source = pd.DataFrame({"row": range(runner.EXPECTED_CACHE_ROWS)})
+            source.attrs["data_source"] = "cache"
+            source.attrs["data_fingerprint"] = "cache-fingerprint"
+            expected_split = self._fake_split()
+
+            with (patch.object(runner, "CACHE_PATH", cache_path),
+                  patch.object(runner, "ROOT", Path(temp_dir)),
+                  patch.object(runner, "load_clean_modeling_data", return_value=source) as loader,
+                  patch.object(runner, "get_split", return_value=expected_split) as get_split):
+                actual_split = runner.load_member3_split()
+
+            loader.assert_called_once_with(source="local")
+            get_split.assert_called_once()
+            self.assertIs(get_split.call_args.kwargs["df"], source)
+            self.assertIs(actual_split, expected_split)
+            self.assertEqual(actual_split.meta["data_source"], "local cache")
+            self.assertEqual(actual_split.meta["source_rows"], 2098)
+
+    def test_load_member3_split_stops_when_cache_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache_path = Path(temp_dir) / "missing_cache.csv"
+            with (patch.object(runner, "CACHE_PATH", cache_path),
+                  patch.object(runner, "load_clean_modeling_data") as loader,
+                  patch.object(runner, "get_split") as get_split):
+                with self.assertRaisesRegex(FileNotFoundError, "Required Member 3 cache"):
+                    runner.load_member3_split()
+            loader.assert_not_called()
+            get_split.assert_not_called()
+
+    def test_load_member3_split_stops_on_wrong_cache_row_count(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache_path = Path(temp_dir) / "modeling_dataset_clean_cache.csv"
+            cache_path.touch()
+            source = pd.DataFrame({"row": range(runner.EXPECTED_CACHE_ROWS - 1)})
+            with (patch.object(runner, "CACHE_PATH", cache_path),
+                  patch.object(runner, "load_clean_modeling_data", return_value=source) as loader,
+                  patch.object(runner, "get_split") as get_split):
+                with self.assertRaisesRegex(ValueError, "Expected 2098 rows.*got 2097"):
+                    runner.load_member3_split()
+            loader.assert_called_once_with(source="local")
+            get_split.assert_not_called()
 
     def test_models_use_exact_features_and_exclude_interactions(self):
         split = self._fake_split()
@@ -108,6 +157,7 @@ class TestCanonicalLyricsModels(unittest.TestCase):
             "word_count_std", "repetition_ratio_std", "avg_word_length_std",
             "line_count_std", "chorus_repetition_count_std", "punctuation_ratio_std",
         ])
+        self.assertEqual(len(runner.LYRICS_FEATURES), 6)
         self.assertFalse(any("__x__" in feature for feature in model1 + model2))
 
     def test_missing_required_column_stops_before_fitting(self):
@@ -207,7 +257,7 @@ class TestCanonicalLyricsModels(unittest.TestCase):
             return metrics(y_true, y_pred, market, track_ids, n_boot=n_boot, seed=seed)
 
         with tempfile.TemporaryDirectory() as output_dir:
-            with (patch.object(runner, "get_split", return_value=split),
+            with (patch.object(runner, "load_member3_split", return_value=split),
                   patch.object(runner, "fit_ols_cluster", side_effect=record_fit),
                   patch.object(runner, "metrics", side_effect=record_metrics)):
                 result = runner.run(Path(output_dir))
@@ -227,9 +277,12 @@ class TestCanonicalLyricsModels(unittest.TestCase):
             })
             wald = json.loads((output_path / "member3_lyrics_joint_wald.json").read_text())
             self.assertEqual(wald["df"], 6)
+            self.assertEqual(len(wald["tested_features"]), 6)
             self.assertEqual(wald["tested_features"], runner.LYRICS_FEATURES)
             summary = json.loads((output_path / "member3_model_run_summary.json").read_text())
             self.assertEqual(summary["source_pipeline"], "src.features.prepare_features.get_split()")
+            self.assertEqual(summary["data_source"], "local cache")
+            self.assertEqual(summary["source_rows"], 183)
             self.assertEqual(summary["train_observations"], 120)
             self.assertEqual(summary["test_observations"], 60)
             self.assertTrue(summary["interaction_terms_excluded"])
@@ -238,6 +291,7 @@ class TestCanonicalLyricsModels(unittest.TestCase):
             self.assertEqual(len(fit_calls), 2)
             self.assertEqual(fit_calls[0]["track_ids"], list(split.ids_train))
             self.assertEqual(fit_calls[1]["track_ids"], list(split.ids_train))
+            self.assertEqual(fit_calls[0]["track_ids"], fit_calls[1]["track_ids"])
             self.assertEqual(fit_calls[0]["target"], list(split.y_train))
             self.assertEqual(fit_calls[1]["target"], list(split.y_train))
             self.assertEqual(fit_calls[0]["columns"], runner.MODEL1_FEATURES)
@@ -247,6 +301,7 @@ class TestCanonicalLyricsModels(unittest.TestCase):
                 self.assertEqual(metric_call["track_ids"], list(split.ids_test))
                 self.assertEqual(metric_call["target"], list(split.y_test))
                 self.assertEqual(metric_call["market"], list(split.market_test))
+            self.assertEqual(metric_calls[0]["track_ids"], metric_calls[1]["track_ids"])
 
 
 if __name__ == "__main__":

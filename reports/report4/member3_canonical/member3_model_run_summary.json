@@ -1,20 +1,19 @@
 {
   "source_pipeline": "src.features.prepare_features.get_split()",
-  "data_source": "not exposed by SplitResult; this run's loader log reported the local fallback data/processed/modeling_dataset.csv (cache)",
-  "source_rows_before_canonical_cleaning": 2856,
-  "total_rows_returned_by_get_split": 2856,
-  "historical_snapshot_rows": 2098,
-  "current_and_historical_snapshots_differ": true,
-  "historical_2098_row_snapshot_available": false,
-  "canonical_results_verified_on_historical_snapshot": false,
-  "historical_snapshot_limitation": "This run used the local CSV fallback with 2,856 observations. The historical 2,098-row snapshot is not currently available, so canonical results on that snapshot have not been verified.",
-  "rows_after_canonical_cleaning": 2856,
-  "train_observations": 2296,
-  "test_observations": 560,
+  "data_source": "local cache",
+  "data_path": "data/processed/modeling_dataset_clean_cache.csv",
+  "data_fingerprint": "bb0aea6d42049da728c8339bbf92388991825d9128cb85122df081e71a0a6e81",
+  "source_rows": 2098,
+  "source_rows_before_canonical_cleaning": 2098,
+  "total_rows_returned_by_get_split": 2095,
+  "rows_after_canonical_cleaning": 2095,
+  "train_observations": 1685,
+  "test_observations": 410,
   "train_unique_track_ids": 1527,
   "test_unique_track_ids": 382,
-  "train_track_market_observations": 2296,
-  "test_track_market_observations": 560,
+  "train_track_market_observations": 1685,
+  "test_track_market_observations": 410,
+  "train_test_track_ids_disjoint": true,
   "model1_features": [
     "tempo_std",
     "onset_rate_std",
@@ -72,34 +71,60 @@
     "continuous_scaling": "StandardScaler fit on Train only, applied to Train and Test",
     "additional_model_preprocessing": "none"
   },
-  "excluded_rows_reported_by_get_split": 0,
-  "excluded_tracks": [],
+  "excluded_rows_reported_by_get_split": 3,
+  "excluded_tracks": [
+    {
+      "spotify_track_id": "6WY4wvlmgccWapnIg14Vy0",
+      "title": "Merry Christmas Mr. Lawrence",
+      "artist": "Ryuichi Sakamoto",
+      "market": "KR",
+      "chart_score": -95.0,
+      "reason": "All lyrics features null (lyrics_status='')"
+    },
+    {
+      "spotify_track_id": "1Px44tw80Q4rcCl8FxDGOi",
+      "title": "Who (Instrumental)",
+      "artist": "Jimin",
+      "market": "KR",
+      "chart_score": 23.09090909090909,
+      "reason": "Instrumental / missing lyrics (lyrics_status='')"
+    },
+    {
+      "spotify_track_id": "7M30L99pePlQ3wh8IxVUsD",
+      "title": "With You - Instrumental",
+      "artist": "Jimin",
+      "market": "VN",
+      "chart_score": 15.75,
+      "reason": "Instrumental / missing lyrics (lyrics_status='')"
+    }
+  ],
   "drop_provenance_limitations": "get_split reports excluded track IDs, titles, markets, scores, and a reason; it does not provide source-row identifiers or a full audit of all upstream filtering.",
   "source_row_count_meta_note": "get_split metadata records input and cleaned rows separately; total_rows_returned_by_get_split is the retained Train plus Test observation count.",
+  "previous_canonical_artifacts_note": "Previous committed canonical artifacts used the 2,856-row local fallback (2,296 Train / 560 Test); this summary records the new 2,098-row cache run.",
   "split_seed": 43,
   "test_size": 0.2,
-  "winsorize_year_q01": 1981.95,
+  "winsorize_year_q01": 1979.84,
   "comparison": [
     {
       "model": "Model 1 (audio + controls)",
-      "N": 560,
-      "R2": 0.03208355090799764,
-      "adjusted_R2": -0.00012069323924079889,
-      "RMSE": 40.92506127678169,
-      "MAE": 32.80474595280767
+      "N": 410,
+      "R2": 0.046987808137627596,
+      "adjusted_R2": 0.00311512411327286,
+      "RMSE": 38.04605317083847,
+      "MAE": 29.738661357402275
     },
     {
       "model": "Model 2 (audio + lyrics + controls)",
-      "N": 560,
-      "R2": 0.028520982926427574,
-      "adjusted_R2": -0.015059384194629821,
-      "RMSE": 41.00030764801371,
-      "MAE": 32.941390299286454
+      "N": 410,
+      "R2": 0.03649058153652707,
+      "adjusted_R2": -0.02357234325080637,
+      "RMSE": 38.25501392403413,
+      "MAE": 30.056886657836756
     }
   ],
   "lyrics_joint_wald": {
-    "statistic": 9.984538317473959,
-    "p_value": 0.1253046564063915,
+    "statistic": 13.593168656609176,
+    "p_value": 0.03452598887246578,
     "df": 6,
     "tested_features": [
       "word_count_std",
@@ -111,6 +136,6 @@
     ],
     "method": "cluster-robust Wald chi-square",
     "alpha": 0.05,
-    "conclusion": "fail to reject H0"
+    "conclusion": "reject H0"
   }
 }

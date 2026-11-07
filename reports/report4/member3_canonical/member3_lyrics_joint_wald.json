@@ -1,6 +1,6 @@
 {
-  "statistic": 9.984538317473959,
-  "p_value": 0.1253046564063915,
+  "statistic": 13.593168656609176,
+  "p_value": 0.03452598887246578,
   "df": 6,
   "tested_features": [
     "word_count_std",
@@ -12,5 +12,5 @@
   ],
   "method": "cluster-robust Wald chi-square",
   "alpha": 0.05,
-  "conclusion": "fail to reject H0"
+  "conclusion": "reject H0"
 }

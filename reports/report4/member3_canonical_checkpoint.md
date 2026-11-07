@@ -1,33 +1,34 @@
 # Member 3 Canonical Pipeline Checkpoint
 
-**Run date:** 2026-11-06 (Asia/Bangkok)
+**Run date:** 2026-11-07 (Asia/Bangkok)
 **Pipeline:** `src.features.prepare_features.get_split()`
-**Status:** Migrated results generated in `reports/report4/member3_canonical/`.
+**Status:** Model 2 rerun completed from the required local clean cache.
 
-## Relationship to the historical checkpoint
+## Data source and canonical split
 
-The prior Member 3 run and its outputs in the parent `reports/report4/` directory are preserved unchanged. That historical workflow used frozen Train/Test ID artifacts, Train-only market-median lyric imputation, and its own scaler. This checkpoint records a separate run using Member 1's canonical split and preprocessing. The two sets of results should not be compared as though they came from identical preprocessing.
-
-## Data returned by the canonical split
-
-The runner called `get_split()` and used its returned matrices, targets, and track IDs as the sole source for fitting and evaluation. In this run the loader log reported the local fallback `data/processed/modeling_dataset.csv` (`cache`):
+The runner requires `data/processed/modeling_dataset_clean_cache.csv` to exist, calls `load_clean_modeling_data(source="local")`, verifies the loader returns 2,098 rows, and passes that DataFrame to `get_split(df=...)`. This prevents Supabase from taking precedence and prevents fallback to the older CSV when the clean cache is missing. The loader log identified the source as `cache` and reported fingerprint `bb0aea6d42049da728c8339bbf92388991825d9128cb85122df081e71a0a6e81`.
 
 | Count | Observations |
 | --- | ---: |
-| Rows entering canonical cleaning | 2,856 |
-| Rows retained by `get_split()` | 2,856 |
-| Train observations | 2,296 |
-| Test observations | 560 |
+| Local cache input | 2,098 |
+| Rows retained after canonical cleaning | 2,095 |
+| Train observations | 1,685 |
+| Test observations | 410 |
 | Unique Train track IDs | 1,527 |
 | Unique Test track IDs | 382 |
+| Rows excluded by `get_split()` | 3 |
 
-No rows were excluded by the canonical lyrics drop rule in this run. `get_split()` exposes exclusions in its metadata when applicable. The `SplitResult` does not expose the loader source or a complete audit of upstream filtering; this run's local-fallback provenance comes from the loader log.
+Train and Test track IDs are disjoint. The split uses seed 43 and `test_size=0.2`. The three rows excluded by the canonical lyrics drop rule are listed with IDs and reasons in `member3_model_run_summary.json`.
 
-The historical source snapshot contains **2,098 rows**, so it differs from the **2,856-observation** local CSV fallback used here. The historical 2,098-row snapshot is not currently available in this workspace, and canonical results have **not** been verified on it.
+## Prior canonical run and snapshot provenance
 
-## Models
+The previously committed canonical artifacts were generated from the older local `data/processed/modeling_dataset.csv` fallback: 2,856 input and retained observations, 2,296 Train, 560 Test, and Wald chi-square(6) = 9.9845, p = 0.1253. Those results were not from the 2,098-row clean cache. This checkpoint records both runs distinctly; the previous root-level historical checkpoint artifacts remain preserved.
 
-Both models use the same canonical Train and Test observations. No interaction columns are included.
+The results below are from the 2,098-row cache identified by the fingerprint above. No result was adjusted to match an expected p-value.
+
+## Models and preprocessing
+
+Both models use the same canonical Train and Test observations. Model 1 has 18 features. Model 2 has 24 features: Model 1 plus exactly six lyrics features. No interaction terms are included.
 
 **Model 1 — Audio baseline:**
 
@@ -47,22 +48,28 @@ word_count_std, repetition_ratio_std, avg_word_length_std, line_count_std,
 chorus_repetition_count_std, punctuation_ratio_std
 ```
 
-The canonical code drops rows when all lyrics features are null or `word_count` is null, fills missing `chorus_repetition_count` with zero, applies `log1p(word_count)`, lower-winsorizes `release_year` at the Train 1st percentile, then fits continuous-feature scaling on Train only. Other required nulls cause an error. No extra imputation, scaling, or transformation is done by this runner.
+Canonical preprocessing remains in `get_split()`: drop rows when all lyrics features or `word_count` are null, fill missing `chorus_repetition_count` with zero, apply `log1p(word_count)`, lower-winsorize `release_year` at the Train 1st percentile, and fit continuous-feature scaling on Train only. Other required nulls cause an error. The runner adds no preprocessing.
 
 ## Results
 
 | Model | Test N | R² | Adjusted R² | RMSE | MAE |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Model 1 (audio + controls) | 560 | 0.03208 | -0.00012 | 40.92506 | 32.80475 |
-| Model 2 (audio + lyrics + controls) | 560 | 0.02852 | -0.01506 | 41.00031 | 32.94139 |
+| Model 1 (audio + controls) | 410 | 0.04699 | 0.00312 | 38.04605 | 29.73866 |
+| Model 2 (audio + lyrics + controls) | 410 | 0.03649 | -0.02357 | 38.25501 | 30.05689 |
 
-The cluster-robust Wald test of exactly the six Model 2 lyrics coefficients is **χ²(6) = 9.9845, p = 0.1253**. At α = 0.05, this run fails to reject the joint null. This is the result of the current canonical local-fallback run; it is not an attempt to reproduce the historical Wald statistic.
+The cluster-robust Wald test jointly tests the six Model 2 lyrics coefficients: **χ²(6) = 13.5932, p = 0.03452599**. At α = 0.05, this run rejects the joint null. The p-value is the computed result, not a target imposed by the runner.
 
-Per-market metrics and bootstrap confidence intervals are in `member3_model_test_metrics.csv`; coefficients are in `member3_model_coefficients.csv`.
+Per-market metrics are in `member3_model_test_metrics.csv`; coefficients are in `member3_model_coefficients.csv`.
+
+## Validation
+
+- Focused tests: `python -m unittest tests.test_lyrics_model2 -v` — 12 passed.
+- Full suite: `python -m unittest discover -s tests -v` — 23 passed.
+- The runner confirms the local cache source, the 2,098-row input, and the Train/Test ID disjointness in `member3_model_run_summary.json`.
 
 ## Canonical result files
 
-All files are under `reports/report4/member3_canonical/`:
+All model artifacts are under `reports/report4/member3_canonical/`:
 
 - `member3_model_comparison.csv`
 - `member3_model_test_metrics.csv`
@@ -70,4 +77,4 @@ All files are under `reports/report4/member3_canonical/`:
 - `member3_lyrics_joint_wald.json`
 - `member3_model_run_summary.json`
 
-These files are separate from and do not replace the historical checkpoint artifacts.
+These canonical outputs are separate from the historical checkpoint artifacts under `reports/report4/`.
