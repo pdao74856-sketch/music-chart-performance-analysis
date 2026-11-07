@@ -1,64 +1,64 @@
 {
-    "source": "data/processed/modeling_dataset.csv",
-    "split_source": "models/train_track_ids.json",
+    "source": "data/processed/modeling_dataset_clean_cache.csv",
+    "split_source": "src.features.prepare_features.get_split().raw_train",
     "train_unique_tracks": 1527,
-    "train_rows": 2296,
+    "train_rows": 1685,
     "markets": {
-        "VN": {
-            "n_rows": 724,
+        "KR": {
+            "n_rows": 551,
             "medians": {
-                "word_count": 376.0,
-                "repetition_ratio": 0.6222999222999224,
-                "avg_word_length": 3.4371821211134215,
-                "line_count": 52.0,
+                "word_count": 302.0,
+                "repetition_ratio": 0.578723404255319,
+                "avg_word_length": 3.47258485639687,
+                "line_count": 51.0,
                 "chorus_repetition_count": 1.0,
-                "punctuation_ratio": 0.03715803839068095
+                "punctuation_ratio": 0.0488431876606684
             },
             "valid_counts": {
-                "word_count": 724,
-                "repetition_ratio": 724,
-                "avg_word_length": 724,
-                "line_count": 724,
-                "chorus_repetition_count": 686,
-                "punctuation_ratio": 724
+                "word_count": 551,
+                "repetition_ratio": 551,
+                "avg_word_length": 551,
+                "line_count": 551,
+                "chorus_repetition_count": 551,
+                "punctuation_ratio": 551
             }
         },
         "US": {
-            "n_rows": 758,
+            "n_rows": 632,
             "medians": {
-                "word_count": 358.0,
-                "repetition_ratio": 0.6294221698113207,
-                "avg_word_length": 3.830212664257488,
-                "line_count": 51.0,
+                "word_count": 361.0,
+                "repetition_ratio": 0.627394586153045,
+                "avg_word_length": 3.842554338063585,
+                "line_count": 50.0,
                 "chorus_repetition_count": 1.0,
-                "punctuation_ratio": 0.047576082964946254
+                "punctuation_ratio": 0.0464547677261614
             },
             "valid_counts": {
-                "word_count": 758,
-                "repetition_ratio": 758,
-                "avg_word_length": 758,
-                "line_count": 758,
-                "chorus_repetition_count": 681,
-                "punctuation_ratio": 758
+                "word_count": 632,
+                "repetition_ratio": 632,
+                "avg_word_length": 632,
+                "line_count": 632,
+                "chorus_repetition_count": 632,
+                "punctuation_ratio": 632
             }
         },
-        "KR": {
-            "n_rows": 814,
+        "VN": {
+            "n_rows": 502,
             "medians": {
-                "word_count": 321.5,
-                "repetition_ratio": 0.5973314356876,
-                "avg_word_length": 3.6531578610583795,
-                "line_count": 51.0,
+                "word_count": 392.0,
+                "repetition_ratio": 0.622073578595318,
+                "avg_word_length": 3.35436253162814,
+                "line_count": 52.0,
                 "chorus_repetition_count": 1.0,
-                "punctuation_ratio": 0.0498145373971709
+                "punctuation_ratio": 0.0307030109236087
             },
             "valid_counts": {
-                "word_count": 814,
-                "repetition_ratio": 814,
-                "avg_word_length": 814,
-                "line_count": 814,
-                "chorus_repetition_count": 767,
-                "punctuation_ratio": 814
+                "word_count": 502,
+                "repetition_ratio": 502,
+                "avg_word_length": 502,
+                "line_count": 502,
+                "chorus_repetition_count": 502,
+                "punctuation_ratio": 502
             }
         }
     }
