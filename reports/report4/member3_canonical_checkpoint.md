@@ -22,7 +22,7 @@ Train and Test track IDs are disjoint. The split uses seed 43 and `test_size=0.2
 
 ## Prior canonical run and snapshot provenance
 
-The previously committed canonical artifacts were generated from the older local `data/processed/modeling_dataset.csv` fallback: 2,856 input and retained observations, 2,296 Train, 560 Test, and Wald chi-square(6) = 9.9845, p = 0.1253. Those results were not from the 2,098-row clean cache. This checkpoint records both runs distinctly; the previous root-level historical checkpoint artifacts remain preserved.
+The previously committed canonical artifacts were generated from the older local `data/processed/modeling_dataset.csv` fallback: 2,856 input and retained observations, 2,296 Train, 560 Test, and Wald chi-square(6) = 9.9845, p = 0.1253. Those results were not from the 2,098-row clean cache. This checkpoint records both runs distinctly. The previous root-level historical checkpoint artifacts have been cleaned up to prevent contradiction and maintain a single source of truth; all validated results are consolidated under `reports/report4/member3_canonical/`.
 
 The results below are from the 2,098-row cache identified by the fingerprint above. No result was adjusted to match an expected p-value.
 
@@ -77,4 +77,4 @@ All model artifacts are under `reports/report4/member3_canonical/`:
 - `member3_lyrics_joint_wald.json`
 - `member3_model_run_summary.json`
 
-These canonical outputs are separate from the historical checkpoint artifacts under `reports/report4/`.
+These canonical outputs serve as the authoritative Model 2 results for Checkpoint 2.
