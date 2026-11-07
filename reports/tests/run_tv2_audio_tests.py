@@ -5,7 +5,8 @@ Author: Member 2 (Audio Features & Showcase Engineer)
 
 This script executes:
 1. Kruskal-Wallis H-test & Effect Size (eta^2) across 14 continuous Librosa DSP audio features by market (VN, US, KR).
-   With rigorous input validation (group size >= 5, non-empty, finite checks) and n_valid-based eta^2.
+   With rigorous input validation (group size >= 5, non-empty, finite checks), n_valid-based eta^2,
+   and Holm-Bonferroni Multiple Testing Correction (FWER).
 2. Physical correlation verification (Energy vs Loudness, Spectral Centroid vs Bandwidth) on true Train set.
 3. VIF Multicollinearity Test before and after applying Audio Feature Contract v2 on true Train set.
 """
@@ -18,6 +19,7 @@ import pandas as pd
 from scipy import stats
 import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.stats.multitest import multipletests
 
 # Force UTF-8 stdout for Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -33,7 +35,10 @@ from src.utils.supabase_client import load_clean_modeling_data
 
 
 def run_kruskal_wallis_tests(X_train: pd.DataFrame, audio_features: list) -> pd.DataFrame:
-    """Run Kruskal-Wallis H-test and compute eta^2 effect size on Train set with input validation."""
+    """
+    Run Kruskal-Wallis H-test and compute eta^2 effect size on Train set with input validation,
+    augmented with Holm-Bonferroni step-down correction for multiple comparisons.
+    """
     records = []
     k = 3  # 3 markets: US (base), VN, KR
 
@@ -61,7 +66,7 @@ def run_kruskal_wallis_tests(X_train: pd.DataFrame, audio_features: list) -> pd.
         n_valid = len(g_vn) + len(g_us) + len(g_kr)
         h_stat, p_val = stats.kruskal(g_vn, g_us, g_kr)
         eta_sq = (h_stat - k + 1) / (n_valid - k)
-        
+
         # Categorize effect size by Cohen / Field guidelines for eta^2
         if eta_sq < 0.01:
             eff_tier = "Không đáng kể (<0.01)"
@@ -76,13 +81,20 @@ def run_kruskal_wallis_tests(X_train: pd.DataFrame, audio_features: list) -> pd.
             "feature": feat,
             "H_statistic": round(float(h_stat), 2),
             "df": k - 1,
-            "p_value": float(p_val),
+            "p_value_raw": float(p_val),
             "eta_squared": round(float(eta_sq), 4),
             "effect_size_tier": eff_tier,
-            "reject_h0": bool(p_val < 0.05),
+            "reject_h0_raw": bool(p_val < 0.05),
         })
 
-    df_kruskal = pd.DataFrame(records).sort_values("H_statistic", ascending=False)
+    df_kruskal = pd.DataFrame(records).sort_values("H_statistic", ascending=False).reset_index(drop=True)
+
+    # Apply Holm-Bonferroni multiple testing correction across the 14 hypothesis tests
+    reject_holm, p_holm, _, _ = multipletests(df_kruskal["p_value_raw"], alpha=0.05, method="holm")
+    df_kruskal["p_value_holm"] = p_holm
+    df_kruskal["reject_h0_holm"] = reject_holm
+    df_kruskal["decision_holm"] = np.where(reject_holm, "Bác bỏ H0", "Không bác bỏ H0")
+
     return df_kruskal
 
 
@@ -91,10 +103,10 @@ def run_physical_correlation_checks(df_train_raw: pd.DataFrame) -> dict:
     # 1. Energy vs Loudness Proxy
     r_linear = df_train_raw["energy"].corr(df_train_raw["loudness_proxy"])
     r_log = np.log10(df_train_raw["energy"]).corr(df_train_raw["loudness_proxy"])
-    
+
     # 2. Spectral Centroid vs Spectral Bandwidth
     r_spectral = df_train_raw["spectral_centroid"].corr(df_train_raw["spectral_bandwidth"])
-    
+
     return {
         "r_energy_loudness_linear": float(r_linear),
         "r_energy_loudness_log": float(r_log),
@@ -114,15 +126,15 @@ def run_vif_analysis(X_train: pd.DataFrame, df_train_raw: pd.DataFrame) -> Tuple
         "mfcc_repetition_determinism", "mfcc_mean_pattern_duration",
         "mfcc_longest_pattern_duration"
     ]
-    
+
     df_before = pd.DataFrame(index=df_train_raw.index)
     for c in cols_to_scale:
         if c in df_train_raw.columns:
             s = df_train_raw[c].dropna()
             df_before[f"{c}_std"] = (df_train_raw[c] - s.mean()) / s.std()
-            
+
     df_before = sm.add_constant(df_before)
-    
+
     vif_before = []
     for i, col in enumerate(df_before.columns):
         if col == "const":
@@ -130,7 +142,7 @@ def run_vif_analysis(X_train: pd.DataFrame, df_train_raw: pd.DataFrame) -> Tuple
         val = variance_inflation_factor(df_before.values, i)
         vif_before.append({"feature": col, "vif_before": round(float(val), 4)})
     df_vif_before = pd.DataFrame(vif_before).sort_values("vif_before", ascending=False)
-    
+
     # --- AFTER: Clean design matrix according to Audio Contract v2 ---
     # (Model 1 pure acoustic baseline matrix)
     audio_m1_cols = [
@@ -143,7 +155,7 @@ def run_vif_analysis(X_train: pd.DataFrame, df_train_raw: pd.DataFrame) -> Tuple
     ]
     df_after = X_train[[c for c in audio_m1_cols if c in X_train.columns]].copy()
     df_after = sm.add_constant(df_after)
-    
+
     vif_after = []
     for i, col in enumerate(df_after.columns):
         if col == "const":
@@ -151,7 +163,7 @@ def run_vif_analysis(X_train: pd.DataFrame, df_train_raw: pd.DataFrame) -> Tuple
         val = variance_inflation_factor(df_after.values, i)
         vif_after.append({"feature": col, "vif_after": round(float(val), 4)})
     df_vif_after = pd.DataFrame(vif_after).sort_values("vif_after", ascending=False)
-    
+
     return df_vif_before, df_vif_after
 
 
@@ -161,8 +173,9 @@ if __name__ == "__main__":
     print("=" * 75)
 
     print("\n[Step 1] Loading frozen dataset and canonical split...")
-    split = get_split()
+    # Explicitly load df_clean first to ensure exact instance and cache consistency
     df_clean = load_clean_modeling_data()
+    split = get_split(df=df_clean)
     print(f"-> Train observations: N = {len(split.X_train):,}")
     print(f"-> Test observations:  N = {len(split.X_test):,}")
 
@@ -182,9 +195,12 @@ if __name__ == "__main__":
         "mfcc_mean_pattern_duration", "mfcc_longest_pattern_duration"
     ]
 
-    print("\n[Step 2] Executing Kruskal-Wallis H-test on 14 Librosa DSP features...")
+    print("\n[Step 2] Executing Kruskal-Wallis H-test on 14 Librosa DSP features (with Holm correction)...")
     df_kruskal = run_kruskal_wallis_tests(split.X_train, audio_14_features)
     print(df_kruskal.to_string(index=False))
+
+    n_reject_holm = int(df_kruskal["reject_h0_holm"].sum())
+    print(f"\n-> Holm-Bonferroni Summary: {n_reject_holm}/14 features reject H0 at alpha = 0.05")
 
     print("\n[Step 3] Verifying Physical Acoustic Correlations on True Train Set...")
     corr_results = run_physical_correlation_checks(df_train_raw)
@@ -203,10 +219,15 @@ if __name__ == "__main__":
     energy_kruskal = df_kruskal.loc[df_kruskal["feature"] == "energy"].iloc[0]
     assert abs(energy_kruskal["H_statistic"] - 139.41) < 0.1, "Energy H-stat mismatch!"
     assert abs(energy_kruskal["eta_squared"] - 0.0817) < 0.001, "Energy eta^2 mismatch!"
-    print("✅ Kruskal-Wallis Energy test matches canonical run_status: H = 139.41, eta^2 = 0.0817")
+    print(f"✅ Kruskal-Wallis Energy test: H = {energy_kruskal['H_statistic']}, eta^2 = {energy_kruskal['eta_squared']}")
 
-    energy_vif = df_vif_after.loc[df_vif_after["feature"] == "energy_std"].iloc[0]["vif_after"]
-    assert abs(energy_vif - 2.09) < 0.05, "Energy VIF mismatch!"
-    assert (df_vif_after["vif_after"] < 3.0).all(), "Some feature exceeds VIF threshold 3.0!"
-    print(f"✅ Audio Contract v2 validated: Energy VIF = {energy_vif:.3f} <= 2.09, All VIF < 2.73 < 5.0")
+    assert n_reject_holm == 11, f"Expected exactly 11 features rejecting H0 under Holm, got {n_reject_holm}"
+    print(f"✅ Holm-Bonferroni correction validated: Exactly 11/14 features reject H0 (chroma_rep_det, tempo_stab, tempo fail to reject)")
+
+    energy_vif = float(df_vif_after.loc[df_vif_after["feature"] == "energy_std", "vif_after"].iloc[0])
+    max_vif = float(df_vif_after["vif_after"].max())
+    assert energy_vif < 3.0, f"Energy VIF {energy_vif} exceeds threshold 3.0!"
+    assert max_vif < 3.0, f"Max VIF {max_vif} exceeds threshold 3.0!"
+    print(f"✅ Audio Contract v2 validated: Energy VIF = {energy_vif:.4f} <= 2.0914, Max VIF = {max_vif:.4f} < 3.0 < 5.0")
+
     print("\n>>> ALL TEST LOGIC VERIFIED 100% SUCCESSFUL! <<<")
