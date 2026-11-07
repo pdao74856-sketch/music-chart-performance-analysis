@@ -1,0 +1,16 @@
+{
+  "statistic": 13.593168656609176,
+  "p_value": 0.03452598887246578,
+  "df": 6,
+  "tested_features": [
+    "word_count_std",
+    "repetition_ratio_std",
+    "avg_word_length_std",
+    "line_count_std",
+    "chorus_repetition_count_std",
+    "punctuation_ratio_std"
+  ],
+  "method": "cluster-robust Wald chi-square",
+  "alpha": 0.05,
+  "conclusion": "reject H0"
+}
