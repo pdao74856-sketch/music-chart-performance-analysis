@@ -29,15 +29,15 @@ Báo cáo kiểm định độc lập này giải quyết hai bài toán phươn
 * **Ý nghĩa thực tiễn & Giới hạn phương pháp luận (Study Limitations):**
   1. *Bản chất mẫu phân tầng:* Việc bác bỏ $H_0$ mô tả đặc tính phân phối biên $P(X \mid \text{Market})$ của các ca khúc lọt vào bảng xếp hạng tại 3 quốc gia, không đại diện cho toàn bộ các tác phẩm âm nhạc đại chúng nói chung.
   2. *Cảnh báo ngụy biện sinh thái (Ecological Fallacy):* Sự khác biệt phân phối **không đồng nghĩa** với việc thị hiếu người nghe hay độ dốc tác động $\frac{\partial Y}{\partial X}$ bắt buộc phải khác nhau giữa các nước. Tuy nhiên, nó là tiền đề thực nghiệm bắt buộc để biện minh cho việc đưa các biến thị trường (`Market_VN`, `Market_KR`) và số hạng tương tác âm học $\times$ thị trường vào mô hình hồi quy.
-  3. *Giới hạn tính độc lập quan sát:* Tập Train gồm 1,685 quan sát ứng với 1,527 bài hát duy nhất (khoảng 158 bài hát xuất hiện đồng thời trên 2 hoặc 3 bảng xếp hạng quốc gia, ví dụ hit toàn cầu của Mỹ lọt chart Việt Nam và Hàn Quốc). Sự hiện diện của các ca khúc đa thị trường này tạo ra mức độ phụ thuộc nhẹ giữa các nhóm, vi phạm một phần giả định quan sát độc lập hoàn toàn của Kruskal-Wallis.
+  3. *Giới hạn tính độc lập quan sát:* Tập Train gồm 1,685 quan sát ứng với 1,527 ca khúc duy nhất (1,383 bài xuất hiện ở 1 thị trường, 130 bài ở 2 thị trường, 14 bài ở cả 3 thị trường). Sự hiện diện của **144 ca khúc đa thị trường** tạo ra **158 dòng quan sát trùng lặp dư thừa (1,685 − 1,527)** giữa các nhóm kiểm định, tạo ra mức độ phụ thuộc nhẹ giữa các phân nhóm thị trường và vi phạm một phần giả định quan sát độc lập hoàn toàn của Kruskal-Wallis.
 
 ### 1.2. Bài Test 2: Kiểm định Đa cộng tuyến (Variance Inflation Factor — VIF) & Hợp đồng Kỹ thuật (Audio Contract v2)
 * **Giả thuyết thống kê:**
   * **$H_0$:** Không có hiện tượng đa cộng tuyến nghiêm trọng giữa các biến âm học giải thích ($VIF_j < 5.0, \forall j$).
   * **$H_1$:** Tồn tại đa cộng tuyến nghiêm trọng ($VIF_j \ge 5.0$), làm ma trận hiệp phương sai $(X^TX)^{-1}$ tiệm cận suy biến, thổi phồng sai số chuẩn $SE(\hat{\beta})$ và đảo ngược dấu tác động thực tế.
 * **Bản chất vật lý của sự trùng lặp tín hiệu số:**
-  1. *Cụm Năng lượng — Âm lượng:* $\text{Loudness} \approx 20 \log_{10}(\text{RMS})$. Mối quan hệ giữa `energy` (biên độ RMS) và `loudness_proxy` (dBFS) là hàm số toán học tất định: tương quan tuyến tính $r = 0.9689$ và tương quan logarit $r = 1.000000$. Đưa cả hai vào OLS khiến VIF bùng nổ lên **$18.20$ đối với `loudness_proxy`** và **$17.39$ đối với `energy`**, vượt xa ngưỡng an toàn $5.0$.
-  2. *Cụm Phổ tần âm sắc:* `spectral_centroid` (trọng tâm phổ) và `spectral_bandwidth` (độ rộng phổ) có tương quan vật lý $r = 0.9089$, đẩy VIF lên **$6.32$ đối với `spectral_bandwidth`** và **$6.02$ đối với `spectral_centroid`**.
+  1. *Cụm Năng lượng — Âm lượng:* $\text{Loudness} \approx 20 \log_{10}(\text{RMS})$. Mối quan hệ giữa `energy` (biên độ RMS) và `loudness_proxy` (dBFS) là hàm số toán học tất định: tương quan tuyến tính $r = 0.9689$ và tương quan logarit $r = 1.000000$. Đưa cả hai vào OLS khiến VIF bùng nổ lên **$18.2034$ đối với `loudness_proxy`** và **$17.3871$ đối với `energy`**, vượt xa ngưỡng an toàn $5.0$.
+  2. *Cụm Phổ tần âm sắc:* `spectral_centroid` (trọng tâm phổ) và `spectral_bandwidth` (độ rộng phổ) có tương quan vật lý $r = 0.9089$, đẩy VIF lên **$6.3232$ đối với `spectral_bandwidth`** và **$6.0221$ đối với `spectral_centroid`**.
 * **Quy tắc kỹ thuật Audio Contract v2:**
   * Mô hình OLS bắt buộc chỉ sử dụng `energy_std` (chuẩn hóa RMS), **nghiêm cấm** đưa `loudness_proxy` vào ma trận hồi quy (`forbidden_cols`). `loudness_proxy` chỉ được giữ lại cho Random Forest và làm thanh trượt trực quan trên giao diện Web App.
   * Loại bỏ hoàn toàn `spectral_bandwidth_std`, chỉ giữ lại `spectral_centroid_std` làm đại diện cho độ sáng âm sắc (Acoustic Brightness).
@@ -129,7 +129,7 @@ Dưới đây là toàn bộ kết quả thực nghiệm chuẩn xác từ file 
 
 #### Biểu đồ minh họa 1 & 2: Phân bố Nhịp điệu, Năng lượng và Dấu ấn Radar 3 Quốc gia
 ![Audio Rhythm & Energy Distribution](../../reports/report4/figures/member2/fig1_rhythm_energy_distribution.png)  
-*Hình 1: Phân bố nhịp điệu (`tempo`), mật độ nốt (`onset_rate`), năng lượng (`energy`) và độ phân tán biên độ (`rms_variability`) tại VN, US, KR.*
+*Hình 1: Phân bố nhịp điệu (`tempo`), mật độ nốt (`onset_rate`), năng lượng (`energy`) và độ biến thiên năng lượng (`rms_variability`) tại VN, US, KR.*
 
 ![Audio Fingerprint Radar](../../reports/report4/figures/member2/fig5_audio_fingerprint_radar.png)  
 *Hình 2: Biểu đồ Radar so sánh 8 chiều đặc trưng âm học chuẩn hóa giữa 3 thị trường âm nhạc.*
@@ -156,6 +156,17 @@ Dưới đây là toàn bộ kết quả thực nghiệm chuẩn xác từ file 
 > [!NOTE]
 > **Tác động của Hiệu chỉnh Holm-Bonferroni:** Ở mức kiểm định thô từng biến, có 12/14 biến có $p < 0.05$. Tuy nhiên, khi kiểm soát sai số họ phép thử FWER qua phương pháp Holm, đặc trưng `chroma_repetition_determinism` có $p_{\text{raw}} = 0.0197$ vượt qua ngưỡng hiệu chỉnh của thứ hạng bậc 12 ($\alpha_{\text{Holm}} = \frac{0.05}{14 - 12 + 1} = 0.0167$), khiến $p_{\text{Holm}} = 0.0592 > 0.05$. Do đó, số lượng đặc trưng âm học thực sự có phân phối khác biệt giữa 3 thị trường là **chính xác 11/14 biến**, và có **3 biến không đủ bằng chứng thống kê để bác bỏ $H_0$** (`chroma_repetition_determinism`, `tempo_stability`, `tempo`).
 
+#### Bảng số liệu mô tả bổ trợ: Trung vị Thực nghiệm theo Thị trường trên tập Train ($N = 1,685$)
+*(Trích xuất trực tiếp từ Step 2b của script `reports/tests/run_tv2_audio_tests.py`)*
+
+| Đặc Trưng Âm Học (`feature`) | Diễn Giải Kỹ Thuật | Trung Vị VN ($N=502$) | Trung Vị US ($N=632$) | Trung Vị KR ($N=551$) | Trung Vị Toàn Bộ ($N=1,685$) | Thị Trường Dẫn Đầu |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| `energy` | Năng lượng RMS (0 - 1) | 0.2178 | 0.2463 | **0.2666** | 0.2448 | Hàn Quốc (KR) |
+| `spectral_centroid` | Độ sáng phổ Treble (Hz) | 2,060.32 | 2,207.87 | **2,404.11** | 2,231.53 | Hàn Quốc (KR) |
+| `onset_rate` | Mật độ nốt gõ (onsets/phút) | 183.65 | **202.94** | 192.88 | 192.88 | Hoa Kỳ (US) |
+| `rms_variability` | Độ biến thiên năng lượng RMS | 0.1080 | 0.1136 | **0.1190** | 0.1140 | Hàn Quốc (KR) |
+| `tempo` | Nhịp điệu bài hát (BPM) | 123.05 | 123.05 | 117.45 | 117.45 | Đồng nhất (~120 BPM) |
+
 #### Luận giải thực nghiệm chuyên sâu:
 1. **Dấu ấn vượt trội của K-Pop về Năng lượng và Độ sáng Phổ:**
    * `energy` thể hiện sự phân hóa mẫu mạnh mẽ nhất toàn bộ tập dữ liệu với $H = 139.41, p_{\text{Holm}} = 7.49 \times 10^{-30}$, đạt cỡ hiệu ứng $\eta^2 = 0.0817$ (mức trung bình-khá). Hàn Quốc (KR) có trung vị năng lượng đạt **$0.2666$** (vượt trội so với US: $0.2463$ và VN: $0.2178$).
@@ -163,7 +174,7 @@ Dưới đây là toàn bộ kết quả thực nghiệm chuẩn xác từ file 
    * *Giả thuyết chuyên môn sản xuất âm thanh:* Dưới góc độ kỹ thuật audio engineering, đây là giả thuyết giải thích hợp lý cho phong cách phối khí K-Pop hiện đại: thường sử dụng kỹ thuật nén âm mastering compression nhằm tối ưu hóa công suất âm thanh trên các thiết bị nghe cá nhân (tai nghe, điện thoại thông minh), đồng thời tăng cường dải cao (high-shelf EQ boost) trên các dải synthesizer và bộ gõ điện tử.
 2. **Mật độ Tiết tấu Hoa Kỳ và Độ Phân tán Biên độ:**
    * Hoa Kỳ (US) dẫn đầu về mật độ nốt gõ `onset_rate` ($H = 29.81, p_{\text{Holm}} = 3.37 \times 10^{-6}$), với trung vị US đạt **$202.94\text{ onsets/phút}$** (> KR: $192.88$ > VN: $183.65\text{ onsets/phút}$). Một giả thuyết khả dĩ là điều này phản ánh cấu trúc tiết tấu dày đặc của các dòng nhạc thịnh hành trên Billboard Hot 100 (như Trap/Hip-hop với các cụm hi-hat rolls phân nhỏ nhịp).
-   * Về độ phân tán năng lượng `rms_variability` ($H = 38.93, p_{\text{Holm}} = 3.86 \times 10^{-8}$), KR đạt trung vị cao nhất ($0.1190$), tiếp theo là US ($0.1136$) và VN ($0.1080$), phản ánh mức độ tương phản động lực học giữa các đoạn verse và drop/chorus trong nhạc nhảy hiện đại.
+   * Về độ biến thiên năng lượng `rms_variability` ($H = 38.93, p_{\text{Holm}} = 3.86 \times 10^{-8}$), KR đạt trung vị cao nhất ($0.1190$), tiếp theo là US ($0.1136$) và VN ($0.1080$), phản ánh mức độ tương phản động lực học giữa các đoạn verse và drop/chorus trong nhạc nhảy hiện đại.
 3. **Tính Đồng Nhất Toàn Cầu của Nhịp Điệu (Tempo Invariance):**
    * Trái ngược với năng lượng và âm sắc, `tempo` hoàn toàn không có sự khác biệt ý nghĩa thống kê giữa 3 quốc gia ($H = 3.32, p_{\text{raw}} = 0.1897, p_{\text{Holm}} = 0.1897 > 0.05, \eta^2 = 0.0008$). 
    * Cả 3 quốc gia đều có trung vị tempo xấp xỉ nhau ($117.45 - 123.05\text{ BPM}$) và giá trị trung bình xoay quanh $119.5 - 122.3\text{ BPM}$, cùng thể hiện hình thái phân phối song đỉnh (bimodal) tại dải 90–105 BPM và 120–130 BPM.
@@ -190,7 +201,7 @@ Dưới đây là toàn bộ kết quả thực nghiệm chuẩn xác từ file 
 | `tempo_std` | 2.1869 | Giữ nguyên (Nhịp điệu) | **2.1869** | An toàn |
 | `chroma_mean_pattern_duration_std` | 2.1339 | Giữ nguyên (RQA Giai điệu) | **2.1339** | An toàn |
 | `chord_change_rate_std` | 2.0530 | Giữ nguyên (Hòa âm) | **2.0530** | An toàn |
-| `rms_variability_std` | 2.0170 | Giữ nguyên (Độ lệch chuẩn RMS) | **2.0170** | An toàn |
+| `rms_variability_std` | 2.0170 | Giữ nguyên (Độ biến thiên RMS) | **2.0170** | An toàn |
 | `mfcc_mean_pattern_duration_std` | 1.8520 | Giữ nguyên (RQA Âm sắc) | **1.8520** | An toàn |
 | `tempo_stability_std` | 1.5000 | Giữ nguyên (Độ ổn định nhịp) | **1.5000** | An toàn |
 | `key_confidence_std` | 1.3863 | Giữ nguyên (Độ tin cậy điệu thức) | **1.3863** | An toàn |
@@ -247,7 +258,7 @@ Bên cạnh việc bảo đảm chuẩn mực thống kê, các kết quả ki�
 ### 5.1. 3 Gạch Đầu Dòng Đúc Kết Dành Cho Slide Nhóm (Khung Thuyết Trình 2 Phút của TV2)
 * **Dị biệt mẫu âm học có ý nghĩa thống kê (11/14 biến bác bỏ $H_0$ sau hiệu chỉnh Holm):** Kiểm định Kruskal-Wallis có hiệu chỉnh sai số họ phép thử (FWER) xác nhận K-Pop vượt trội về Năng lượng ($H = 139.41, \eta^2 = 0.082$) và Độ sáng phổ Treble ($H = 127.65, \eta^2 = 0.075$); Pop Hoa Kỳ dẫn đầu về Mật độ nốt gõ Onset ($202.94\text{ onsets/phút}, p < 0.001$). Ngược lại, Tempo hoàn toàn đồng nhất toàn cầu quanh hằng số sinh học 120 BPM ($H = 3.32, p_{\text{Holm}} = 0.190$).
 * **Audio Contract v2 triệt tiêu đa cộng tuyến vật lý:** Nhóm phát hiện tương quan tất định giữa Energy và Loudness ($r = 1.0$ trên thang log, đẩy VIF lên 18.20). Nhóm kiên quyết **cấm đưa Loudness vào OLS** và loại bỏ Spectral Bandwidth, đưa VIF của Energy về **2.0914** và toàn bộ ma trận Model 1 về **$< 2.74 < 5.0$**, bảo toàn tính khả nghịch $(X^TX)^{-1}$ cho mô hình OLS.
-* **Bảo toàn tính trung thực phương pháp luận:** Báo cáo ghi nhận rõ giới hạn vi phạm một phần tính độc lập của Kruskal-Wallis do 158 ca khúc xuất hiện đa thị trường (cross-market entries). Sự khác biệt phân phối biên $P(X \mid \text{Market})$ chỉ mô tả đặc tính mẫu phân tầng của các ca khúc lọt chart, là tiền đề kinh tế lượng để chuyển giao cho TV1 kiểm định các số hạng tương tác thị trường.
+* **Bảo toàn tính trung thực phương pháp luận:** Báo cáo ghi nhận rõ giới hạn vi phạm một phần tính độc lập của Kruskal-Wallis do **144 ca khúc xuất hiện đa thị trường (tạo ra 158 dòng quan sát trùng lặp dư thừa: 1,685 − 1,527)**. Sự khác biệt phân phối biên $P(X \mid \text{Market})$ chỉ mô tả đặc tính mẫu phân tầng của các ca khúc lọt chart, là tiền đề kinh tế lượng để chuyển giao cho TV1 kiểm định các số hạng tương tác thị trường.
 
 ### 5.2. Chuyển Giao Mạch Thuyết Trình Sang Thành Viên 3 (Lyrics Lead)
 > *"Sau khi tín hiệu âm học đã được sàng lọc đa cộng tuyến và chứng minh tính dị biệt mẫu phân tầng, câu hỏi đặt ra là: Liệu yếu tố ca từ và điệu thức âm nhạc có tạo ra sự phân hóa tương tự giữa 3 quốc gia hay không? Xin mời Thành viên 3 trình bày phân hệ Ca từ NLP."*
