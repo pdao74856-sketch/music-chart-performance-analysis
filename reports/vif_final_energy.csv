@@ -1,0 +1,25 @@
+feature,vif_final,category
+word_count_std,3.7737,Lyrics
+chroma_longest_pattern_duration_std,2.7702,Audio RQA
+line_count_std,2.7631,Lyrics
+mfcc_longest_pattern_duration_std,2.4836,Audio RQA
+energy_std,2.282,Audio Energy
+tempo_std,2.261,Audio Rhythm
+chroma_mean_pattern_duration_std,2.1744,Audio RQA
+rms_variability_std,2.1382,Audio Energy
+chord_change_rate_std,2.0955,Audio Harmony
+mfcc_mean_pattern_duration_std,1.8708,Audio RQA
+Market_KR,1.768,Dummy
+repetition_ratio_std,1.7669,Lyrics
+tempo_stability_std,1.5564,Audio Rhythm
+Market_VN,1.5167,Dummy
+spectral_centroid_std,1.4623,Audio Timbre
+key_confidence_std,1.4295,Audio Harmony
+onset_rate_std,1.4052,Audio Rhythm
+chroma_repetition_determinism_std,1.3818,Audio RQA
+punctuation_ratio_std,1.3776,Lyrics
+mfcc_repetition_determinism_std,1.3739,Audio RQA
+chorus_repetition_count_std,1.2983,Lyrics
+release_year_std,1.2173,Control
+avg_word_length_std,1.215,Lyrics
+mode,1.2014,Audio Binary
