@@ -17,6 +17,9 @@ if str(ROOT_DIR) not in sys.path:
 
 from src.utils.supabase_client import get_supabase_credentials
 
+from app.components.tab_diagnostics import render_tab_diagnostics
+from app.components.tab_simulator import render as render_tab_simulator
+
 # Page Configuration
 st.set_page_config(
     page_title="What Makes a Hit Song? | Multimodal Analysis",
@@ -84,13 +87,11 @@ with tabs[0]:
     st.info("🚧 **Đang ở giai đoạn hoàn thiện Checkpoint 2.** Phân hệ này sẽ được **Member 2** tích hợp và hoàn thiện tại **Checkpoint 3** (Showcase 15 bài mẫu Test Set & Radar Chart đa chiều).")
 
 with tabs[1]:
-    st.header("🎛️ Giả Lập Sáng Tác Hit (What-If Simulator)")
-    st.info("🚧 **Đang ở giai đoạn hoàn thiện Checkpoint 2.** Phân hệ này sẽ được **Member 3** tích hợp và hoàn thiện tại **Checkpoint 3** (Thanh trượt đặc trưng ca từ NLP & âm học Librosa).")
+    render_tab_simulator()
 
 with tabs[2]:
     st.header("🎙️ Tải Lên Âm Thanh & Trích Xuất Librosa Thời Gian Thực")
     st.info("🚧 **Đang ở giai đoạn hoàn thiện Checkpoint 2.** Phân hệ này sẽ được **Member 2** tích hợp và hoàn thiện tại **Checkpoint 3** (Tải lên file MP3/WAV, trích xuất 17 đặc trưng Librosa với caching @st.cache_data và rào chắn an toàn).")
 
 with tabs[3]:
-    st.header("📊 Model Diagnostics & Comparative Benchmark")
-    st.info("🚧 **Đang ở giai đoạn hoàn thiện Checkpoint 2.** Phân hệ này sẽ được **Member 1 & Member 4** tích hợp và hoàn thiện tại **Checkpoint 3** (Bảng đối chuẩn OLS Model 3 vs Random Forest Model 4).")
+    render_tab_diagnostics()
