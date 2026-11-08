@@ -52,7 +52,7 @@ Hình phụ (chẩn đoán phần dư): `../diagnostics/qq_residuals.png`, `../d
 | Thống kê | Giá trị | df | p-value | Quyết định |
 | :--- | :---: | :---: | :--- | :--- |
 | LM | 84,07 | 34 | 3,99 × 10⁻⁶ | Bác bỏ H₀ |
-| F | 2,55 | (34; 1.650) | 2,73 × 10⁻⁶ | Bác bỏ H₀ |
+| F | 2,55 | (34; 1650) | 2,73 × 10⁻⁶ | Bác bỏ H₀ |
 
 Phương sai sai số không đồng nhất. Ngoài ra, một bài hát có thể có tối đa 3 dòng (3 thị trường) nên sai số trong cùng bài không độc lập. Vì vậy mọi suy luận dùng sai số chuẩn vững theo cụm (Cameron & Miller, 2015).
 
@@ -104,7 +104,7 @@ F thường = 12,37 (df 2; 1.648; p = 4,67 × 10⁻⁶); Wald theo cụm χ²(2)
 
 **4.6 VIF của ma trận 24 biến chính Model 3 (Train, bản dùng `energy_std`)**
 
-Ngưỡng tham chiếu VIF < 5. Cao nhất: `word_count_std` 3,77; `chroma_longest_pattern_duration_std` 2,77; `line_count_std` 2,76; `mfcc_longest_pattern_duration_std` 2,48; `energy_std` 2,28. Mọi biến đều < 5 (đầy đủ trong `reports/vif_final_energy.csv`). `loudness_proxy` không đưa vào OLS vì loudness_proxy = 20·log10(energy); `spectral_bandwidth` bị loại do tương quan r = 0,909 với `spectral_centroid`. Lưu ý: file `reports/vif_after.csv` cũ là bản giữ loudness, không phải bản dùng cho Model 3 hiện tại.
+Ngưỡng tham chiếu VIF < 5. Cao nhất: `word_count_std` 3,77; `chroma_longest_pattern_duration_std` 2,77; `line_count_std` 2,76; `mfcc_longest_pattern_duration_std` 2,48; `energy_std` 2,28. Mọi biến đều < 5 (đầy đủ trong `reports/vif_final_energy.csv`). `loudness_proxy` không đưa vào OLS vì loudness_proxy = 20·log10(energy); `spectral_bandwidth` bị loại do tương quan r = 0,909 với `spectral_centroid`. Lưu ý: file `reports/vif_after.csv` cũ là bản giữ loudness, không phải bản dùng cho Model 3 hiện tại. VIF của energy_std là 2,09 trong ma trận Audio 15 biến của Model 1 (báo cáo TV2) và 2,28 trong ma trận 24 biến chính của Model 3 (có thêm ca từ và bối cảnh); hai giá trị khác nhau vì được tính trên hai ma trận khác nhau, và đều thấp hơn ngưỡng 5.
 
 ## 5. Kết luận & điểm nhấn đưa lên slide
 
