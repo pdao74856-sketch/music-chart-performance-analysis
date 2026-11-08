@@ -49,10 +49,10 @@ Hình phụ (chẩn đoán phần dư): `../diagnostics/qq_residuals.png`, `../d
 
 **4.1 Breusch–Pagan (Train, n = 1.685)**
 
-| Thống kê | Giá trị | p-value | Quyết định |
-| :--- | :---: | :---: | :--- |
-| LM | 84,07 | 3,99 × 10⁻⁶ | Bác bỏ H₀ |
-| F | 2,55 | 2,73 × 10⁻⁶ | Bác bỏ H₀ |
+| Thống kê | Giá trị | df | p-value | Quyết định |
+| :--- | :---: | :---: | :--- | :--- |
+| LM | 84,07 | 34 | 3,99 × 10⁻⁶ | Bác bỏ H₀ |
+| F | 2,55 | (34; 1.650) | 2,73 × 10⁻⁶ | Bác bỏ H₀ |
 
 Phương sai sai số không đồng nhất. Ngoài ra, một bài hát có thể có tối đa 3 dòng (3 thị trường) nên sai số trong cùng bài không độc lập. Vì vậy mọi suy luận dùng sai số chuẩn vững theo cụm (Cameron & Miller, 2015).
 

@@ -126,10 +126,9 @@ def main():
     max_row = df_vif.iloc[0]
     energy_row = df_vif[df_vif["feature"] == "energy_std"].iloc[0]
 
-    print(f"Số biến: {len(df_vif)}")
+    print(f"Features count: {len(df_vif)}")
     print(f"Max VIF: {max_row['vif_final']:.4f} ({max_row['feature']})")
-    print(f"VIF của energy_std: {energy_row['vif_final']:.4f}")
-
+    print(f"VIF of energy_std: {energy_row['vif_final']:.4f}")
 
 if __name__ == "__main__":
     main()
