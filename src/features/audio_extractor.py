@@ -132,18 +132,22 @@ def _load_audio_safely(
     # Read audio signal with soundfile (supports WAV, MP3, FLAC, OGG natively)
     try:
         y, sr = sf.read(file_obj)
+        if y.ndim > 1:
+            y = np.mean(y, axis=1)
     except Exception:
         # Fallback to librosa if soundfile encounters uncommon containers
         try:
+            if hasattr(file_obj, 'seek'):
+                file_obj.seek(0)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                y, sr = librosa.load(file_obj, sr=None, mono=False)
+                y, sr = librosa.load(file_obj, sr=None, mono=True)
         except Exception as e:
             raise ValueError(f"Không thể giải mã tệp âm thanh (định dạng không hỗ trợ hoặc tệp bị hỏng): {e}") from None
 
-    # Convert to mono if stereo/multichannel
+    # Defensive check: ensure 1D mono signal
     if y.ndim > 1:
-        y = np.mean(y, axis=1)
+        y = np.mean(y, axis=0 if y.shape[0] < y.shape[1] else 1)
 
     # Fast, high-quality resampling via soxr C-backend
     if sr != target_sr:

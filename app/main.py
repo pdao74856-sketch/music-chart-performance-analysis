@@ -90,8 +90,12 @@ with tabs[1]:
     render_tab_simulator()
 
 with tabs[2]:
-    st.header("🎙️ Tải Lên Âm Thanh & Trích Xuất Librosa Thời Gian Thực")
-    st.info("🚧 **Đang ở giai đoạn hoàn thiện Checkpoint 2.** Phân hệ này sẽ được **Member 2** tích hợp và hoàn thiện tại **Checkpoint 3** (Tải lên file MP3/WAV, trích xuất 17 đặc trưng Librosa với caching @st.cache_data và rào chắn an toàn).")
+    try:
+        from app.components.tab_upload import render as _render_tab_upload
+        _render_tab_upload()
+    except ImportError as _e:
+        st.header("🎙️ Tải Lên Âm Thanh & Trích Xuất Librosa Thời Gian Thực")
+        st.error(f"⚠️ Không thể nạp Tab Upload: {_e}")
 
 with tabs[3]:
     render_tab_diagnostics()
