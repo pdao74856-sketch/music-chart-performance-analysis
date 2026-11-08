@@ -132,8 +132,6 @@ def _load_audio_safely(
     # Read audio signal with soundfile (supports WAV, MP3, FLAC, OGG natively)
     try:
         y, sr = sf.read(file_obj)
-        if y.ndim > 1:
-            y = np.mean(y, axis=1)
     except Exception:
         # Fallback to librosa if soundfile encounters uncommon containers
         try:

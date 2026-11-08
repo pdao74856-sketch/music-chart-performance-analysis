@@ -30,7 +30,6 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import soundfile as sf
 
 # ── Graceful Streamlit Import (cho phép chạy headless test khi chưa có UI) ──
 try:
@@ -119,13 +118,14 @@ def _inspect_audio_duration(file_bytes: bytes) -> Tuple[Optional[float], Optiona
     Bảo vệ ứng dụng trước các tệp dài bất thường (podcast, DJ mix) vượt quá 360 giây.
     """
     try:
+        import soundfile as sf
         info = sf.info(BytesIO(file_bytes))
         return float(info.duration), None
     except Exception as exc:  # noqa: BLE001
         return None, str(exc)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=1800)
 def _extract_cached(file_sha256: str, _audio_bytes: bytes) -> Tuple[Dict[str, Any], str]:
     """
     Trích xuất 17 đặc trưng âm học (cached theo SHA-256 nội dung file).
@@ -393,6 +393,8 @@ def render() -> None:
 
     with right_col:
         if uploaded is None:
+            st.session_state.pop("tab3_predictions", None)
+            st.session_state.pop("tab3_current_file_sha", None)
             st.info("⬅️ Hãy kéo thả hoặc chọn một tệp âm thanh ở cột bên trái để bắt đầu phân tích.")
             return
 
@@ -512,3 +514,7 @@ def render() -> None:
             _render_prediction_result(current_pred, market_label)
         else:
             st.info(f"💡 Nhấn nút trên để tính toán dự đoán điểm số tại **{market_label}**.")
+
+
+# Alias to conform with team-wide naming conventions (e.g. render_tab_diagnostics)
+render_tab_upload = render
