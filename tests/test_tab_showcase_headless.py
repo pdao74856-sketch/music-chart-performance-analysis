@@ -7,11 +7,12 @@ Owner: Member 2 (Audio DSP & Librosa Feature Engineering Lead)
 Test Coverage:
 1. Dataset loading & integrity: Exactly 15 curated tracks across 3 markets (5 VN, 5 US, 5 KR).
 2. Out-of-sample test split compliance: All 15 track IDs exist in models/test_track_ids.json.
-3. Multi-tier representation: Spanning all 4 empirical tiers (Tier 1 to Tier 4).
+3. Multi-tier representation & balance: Symmetrical distribution across all 3 markets
+   (1 Tier 1, 2 Tier 2, 1 Tier 3, 1 Tier 4 per market).
 4. Min-Max Scaling precision: Scaled values strictly within [0.0, 1.0], with special emphasis on negative loudness_proxy (dBFS).
 5. Radar Chart figure topology: Plotly Graph Objects Figure with 2 traces, closed 6-dimension polygons (7 vertices).
 6. Dual-model metrics consistency: Finite predictions for OLS Model 3 and RF Model 4, accurate error computations.
-7. Graceful degradation: Handles headless environments without UI display errors.
+7. Graceful degradation & UI resilience: Handles headless environments and market switching without KeyError.
 """
 
 import json
@@ -72,22 +73,24 @@ def test_showcase_tracks_exist_in_test_track_ids():
 
 
 # ==============================================================================
-# TEST 2: EMPIRICAL TIER DISTRIBUTION
+# TEST 2: EMPIRICAL TIER DISTRIBUTION & PER-MARKET BALANCE
 # ==============================================================================
 
-def test_showcase_tier_distribution():
-    """Kiểm tra tập 15 bài bao quát cả 4 phân tầng thành tích từ siêu hit đến đáy BXH."""
+def test_showcase_tier_distribution_and_balance():
+    """
+    Kiểm tra tập 15 bài bao quát cả 4 phân tầng thành tích và đối xứng hoàn hảo trên cả 3 thị trường:
+    Mỗi thị trường (VN, US, KR) có đúng 1 Tier 1, 2 Tier 2, 1 Tier 3, 1 Tier 4.
+    """
     df, _ = load_showcase_dataset()
 
-    tiers_found = set()
-    for score in df["chart_score_actual"]:
-        code, _ = classify_chart_tier(score)
-        tiers_found.add(code)
+    for mkt in ["VN", "US", "KR"]:
+        sub = df[df["market"] == mkt]
+        tier_counts = sub["tier_code"].value_counts().to_dict()
 
-    assert "Tier 1" in tiers_found, "Thiếu đại diện Tier 1 (Viral Hit)!"
-    assert "Tier 2" in tiers_found, "Thiếu đại diện Tier 2 (Solid Performer)!"
-    assert "Tier 3" in tiers_found, "Thiếu đại diện Tier 3 (Moderate/Lower)!"
-    assert "Tier 4" in tiers_found, "Thiếu đại diện Tier 4 (Deep Chart)!"
+        assert tier_counts.get("Tier 1") == 1, f"Thị trường {mkt} phải có đúng 1 bài Tier 1, thực tế: {tier_counts.get('Tier 1')}"
+        assert tier_counts.get("Tier 2") == 2, f"Thị trường {mkt} phải có đúng 2 bài Tier 2, thực tế: {tier_counts.get('Tier 2')}"
+        assert tier_counts.get("Tier 3") == 1, f"Thị trường {mkt} phải có đúng 1 bài Tier 3, thực tế: {tier_counts.get('Tier 3')}"
+        assert tier_counts.get("Tier 4") == 1, f"Thị trường {mkt} phải có đúng 1 bài Tier 4, thực tế: {tier_counts.get('Tier 4')}"
 
 
 def test_classify_chart_tier_boundaries():
@@ -196,7 +199,7 @@ def test_dual_model_predictions_consistency():
 
 
 # ==============================================================================
-# TEST 6: STREAMLIT RENDER EXECUTION HEADLESS
+# TEST 6: STREAMLIT RENDER EXECUTION HEADLESS & MARKET SWITCHING
 # ==============================================================================
 
 def test_render_executes_without_exceptions():
@@ -223,3 +226,30 @@ def test_render_executes_without_exceptions():
     assert mock_st.header.called, "st.header phải được gọi"
     assert mock_st.selectbox.called, "st.selectbox phải được gọi"
     assert mock_st.metric.called, "st.metric phải được gọi cho 3 chỉ số song song"
+
+
+def test_render_switching_markets_no_key_error():
+    """Kiểm tra chuyển đổi qua lại giữa các thị trường không gây KeyError trong session state."""
+    for market_choice in ["Việt Nam (VN)", "Hoa Kỳ (US)", "Hàn Quốc (KR)", "Tất cả (15 bài)"]:
+        mock_st = MagicMock()
+
+        def dummy_columns(spec):
+            n = len(spec) if isinstance(spec, (list, tuple)) else int(spec)
+            return [MagicMock() for _ in range(n)]
+
+        mock_st.columns.side_effect = dummy_columns
+        mock_st.expander.return_value.__enter__.return_value = MagicMock()
+        mock_st.expander.return_value.__exit__.return_value = None
+
+        # Return market_choice for the market filter, and first option for track picker
+        def mock_selectbox(label, options, **kwargs):
+            if "thị trường" in label:
+                return market_choice
+            return options[0]
+
+        mock_st.selectbox.side_effect = mock_selectbox
+
+        with patch.dict(sys.modules, {"streamlit": mock_st}):
+            render()
+
+        assert mock_st.header.called

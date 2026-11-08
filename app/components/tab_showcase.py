@@ -14,7 +14,7 @@ Key Features:
   Gracefully handles negative dBFS values for loudness_proxy (-25 to -6 dBFS).
 - Baseline Median reference polygon for comparative profiling.
 - Side-by-side 3-metric comparison: Actual Chart Score vs OLS Model 3 (TV1) vs RF Model 4 (TV4).
-- Offline-first resilience: Queries Supabase via load_clean_modeling_data(source="auto")
+- Offline-first resilience with @st.cache_data: Queries Supabase via load_clean_modeling_data(source="auto")
   with seamless fallback to local cache (modeling_dataset_clean_cache.csv).
 - Academic econometric commentary on hit song unpredictability and residual interpretation.
 """
@@ -27,6 +27,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+# Setup Streamlit caching decorator safely for both Streamlit runtime and headless test environments
+try:
+    import streamlit as st
+    _cache_data = st.cache_data(show_spinner=False)
+except Exception:
+    def _cache_data(func):
+        return func
 
 # Root directory resolution (depth 2 from app/components/tab_showcase.py -> repo root)
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -95,37 +103,32 @@ RADAR_KEYS = [f["key"] for f in RADAR_FEATURE_DEFS]
 RADAR_LABELS = [f["label"] for f in RADAR_FEATURE_DEFS]
 
 # 15 Representative Tracks (5 VN, 5 US, 5 KR) selected from models/test_track_ids.json
-# Spanning all 4 empirical performance tiers
+# Balanced across all 4 empirical performance tiers: exactly 1 Tier 1, 2 Tier 2, 1 Tier 3, 1 Tier 4 per market
 SHOWCASE_SPECIFICATIONS = [
     # --- VIETNAM (VN) ---
     {
         "spotify_track_id": "2HRgqmZQC0MC7GeNuDIXHN",
         "market": "VN",
-        "tier_name": "Tier 1: Viral Hit (Top 25%)",
         "highlight": "Quán quân toàn cầu, năng lượng cao, độ lớn vượt trội",
     },
     {
-        "spotify_track_id": "7GARzfC1mwhDuk4t9WOACq",
+        "spotify_track_id": "5ydjxBSUIDn26MFzU3asP4",
         "market": "VN",
-        "tier_name": "Tier 2: Thành tích khá (Trên trung vị)",
-        "highlight": "Rock-hiphop phá cách, nhịp độ biến động mạnh",
+        "highlight": "R&B/Pop trữ tình, tempo chậm rãi, độ lớn êm dịu đặc trưng",
     },
     {
         "spotify_track_id": "3Nn9QjxOEj1pleW9xTG6cq",
         "market": "VN",
-        "tier_name": "Tier 2: Thành tích khá (Trên trung vị)",
         "highlight": "Ballad/Pop hiện đại, hòa âm ấm áp đặc trưng V-Pop",
     },
     {
         "spotify_track_id": "3yWacnoBnM0lrzLmXAk44d",
         "market": "VN",
-        "tier_name": "Tier 3: Dưới trung vị",
         "highlight": "Ballad truyền thống, tempo chậm rãi, tập trung ca từ",
     },
     {
         "spotify_track_id": "5Ss7wCp22FOAbfeg75KllJ",
         "market": "VN",
-        "tier_name": "Tier 4: Đáy BXH (Outlier)",
         "highlight": "Trụ hạng ngắn hạn, năng lượng âm học tối giản",
     },
 
@@ -133,31 +136,26 @@ SHOWCASE_SPECIFICATIONS = [
     {
         "spotify_track_id": "2tzgSUZOUKopYbRqQOVT8X",
         "market": "US",
-        "tier_name": "Tier 1: Viral Hit (Top 25%)",
         "highlight": "Trap/Hip-Hop hiện đại, bass dày, onset rate cao",
     },
     {
-        "spotify_track_id": "4GqhG9rDuRUoNyDSMJ0Brq",
+        "spotify_track_id": "3aQem4jVGdhtg116TmJnHz",
         "market": "US",
-        "tier_name": "Tier 2: Thành tích khá (Trên trung vị)",
-        "highlight": "Soundtrack bom tấn, phối khí điện ảnh kết hợp trap",
+        "highlight": "Hiphop năng lượng vừa phải, beat tối giản, nhịp điệu dứt khoát",
     },
     {
         "spotify_track_id": "7KA4W4McWYRpgf0fWsJZWB",
         "market": "US",
-        "tier_name": "Tier 2: Thành tích khá (Trên trung vị)",
         "highlight": "Neo-Soul/R&B retro, độ sáng phổ hài hòa",
     },
     {
         "spotify_track_id": "200x8ONbPfFzByUr3fVz46",
         "market": "US",
-        "tier_name": "Tier 3: Dưới trung vị",
         "highlight": "Country-Pop mộc mạc, tốc độ đổi hợp âm ổn định",
     },
     {
         "spotify_track_id": "2J051fjLklkoPbzOoTAACZ",
         "market": "US",
-        "tier_name": "Tier 4: Đáy BXH (Outlier)",
         "highlight": "Pop-Rock năng lượng cao nhưng thiếu yếu tố lan tỏa",
     },
 
@@ -165,31 +163,26 @@ SHOWCASE_SPECIFICATIONS = [
     {
         "spotify_track_id": "0AQEShePVSsxMTM6a8ik6t",
         "market": "KR",
-        "tier_name": "Tier 1: Viral Hit (Top 25%)",
         "highlight": "K-HipHop sôi động, nhịp độ dồn dập, độ phủ sóng lớn",
     },
     {
         "spotify_track_id": "1jRYyE9MEg7nxUgWEtsqFp",
         "market": "KR",
-        "tier_name": "Tier 2: Thành tích khá (Trên trung vị)",
         "highlight": "K-R&B trữ tình, độ lớn tiết chế, giai điệu lôi cuốn",
     },
     {
         "spotify_track_id": "3khEEPRyBeOUabbmOPJzAG",
         "market": "KR",
-        "tier_name": "Tier 2: Thành tích khá (Trên trung vị)",
         "highlight": "J-Rock/Anime crossover, chuyển hợp âm dồn dập",
     },
     {
         "spotify_track_id": "6G3myAs4HemIdtLYhhjGLP",
         "market": "KR",
-        "tier_name": "Tier 3: Dưới trung vị",
         "highlight": "Pop Soul mượt mà, tempo thư thái, giọng hát nổi bật",
     },
     {
         "spotify_track_id": "3LEgGAl9zLcQWGTp7ptqtQ",
         "market": "KR",
-        "tier_name": "Tier 4: Đáy BXH (Outlier)",
         "highlight": "EDM/Dance pop, cấu trúc chuẩn mực nhưng thứ hạng thấp",
     },
 ]
@@ -240,9 +233,10 @@ def compute_min_max_scaling(
     return bounds, scaled_df
 
 
+@_cache_data
 def load_showcase_dataset() -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]]]:
     """
-    Nạp dữ liệu 15 bài mẫu showcase:
+    Nạp dữ liệu 15 bài mẫu showcase (được cache qua @st.cache_data):
     1. Truy vấn đặc trưng âm học từ Supabase / cache nội bộ qua load_clean_modeling_data.
     2. Nạp kết quả dự đoán OLS Model 3 (TV1) và RF Model 4 (TV4) từ models/test_predictions.csv.
     3. Thực hiện Min-Max scaling trên 15 bài mẫu cho 6 trục Radar.
@@ -277,7 +271,7 @@ def load_showcase_dataset() -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]
         how="inner",
     )
 
-    # 4. Filter strictly the 15 curated showcase tracks
+    # 4. Filter strictly the 15 curated showcase tracks & dynamically derive tiers
     spec_rows: List[pd.DataFrame] = []
     for spec in SHOWCASE_SPECIFICATIONS:
         tid = spec["spotify_track_id"]
@@ -285,7 +279,10 @@ def load_showcase_dataset() -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]
         match = merged[(merged["spotify_track_id"] == tid) & (merged["market"] == mkt)]
         if not match.empty:
             row_copy = match.iloc[0:1].copy()
-            row_copy["tier_name"] = spec["tier_name"]
+            act_score = float(row_copy["chart_score_actual"].iloc[0])
+            tier_code, tier_desc = classify_chart_tier(act_score)
+            row_copy["tier_code"] = tier_code
+            row_copy["tier_name"] = f"{tier_code}: {tier_desc}"
             row_copy["highlight"] = spec["highlight"]
             spec_rows.append(row_copy)
 
@@ -453,7 +450,7 @@ def render() -> None:
 
     st.header("🎯 Thư Viện Bài Mẫu Showcase & Radar Chart Âm Học")
     st.caption(
-        "Khám phá hồ sơ âm học và đối chuẩn dự đoán trên 15 ca khúc tiêu biểu từ tập kiểm thử độc lập (OOS Test Set $n=382$ / $411$ quan sát), "
+        "Khám phá hồ sơ âm học và đối chuẩn dự đoán trên 15 ca khúc tiêu biểu từ tập kiểm thử độc lập (OOS Test Set $n=382$ ca khúc / $410$ quan sát), "
         "đại diện đầy đủ cho 3 thị trường Việt Nam (VN), Hoa Kỳ (US) và Hàn Quốc (KR)."
     )
 
@@ -492,15 +489,21 @@ def render() -> None:
         track_options.append(label)
         track_id_map[label] = (r["spotify_track_id"], r["market"])
 
+    if not track_options:
+        st.warning("Không có ca khúc nào phù hợp với bộ lọc đã chọn.")
+        return
+
     with c_trk:
         selected_label = st.selectbox(
             "Chọn ca khúc phân tích:",
             track_options,
             index=0,
-            key="showcase_track_picker",
+            key=f"showcase_track_picker_{market_choice}",
         )
 
-    # 3. Lấy thông tin bài hát được chọn
+    # 3. Lấy thông tin bài hát được chọn (phòng thủ an toàn kép chống KeyError)
+    if selected_label not in track_id_map:
+        selected_label = track_options[0]
     sel_tid, sel_mkt = track_id_map[selected_label]
     sel_match = filtered_df[
         (filtered_df["spotify_track_id"] == sel_tid) & (filtered_df["market"] == sel_mkt)
@@ -581,7 +584,7 @@ def render() -> None:
             value=f"{pred_ols:.1f} điểm",
             delta=f"{err_ols:+.1f} pts (Sai số OLS)",
             delta_color="off",
-            help="Mô hình Hồi quy Tuyến tính Đa biến có tương tác thị trường (R² = 0.057, F = 3.69, p < 0.001).",
+            help="Mô hình Hồi quy Tuyến tính Đa biến có tương tác thị trường (R²_OOS = 0.034 / 3.40%, R²_Train = 0.066 / 6.56%, Wald kiểm định tương tác: χ²(10) = 17.91, p = 0.057).",
         )
 
         # Ô 3: Dự đoán Random Forest Model 4
@@ -590,7 +593,7 @@ def render() -> None:
             value=f"{pred_rf:.1f} điểm",
             delta=f"{err_rf:+.1f} pts (Sai số RF)",
             delta_color="off",
-            help="Mô hình Rừng ngẫu nhiên phi tuyến tính (R²_OOS = 0.0558, 200 estimators, max_depth=10).",
+            help="Mô hình Rừng ngẫu nhiên phi tuyến tính (R²_OOS = 0.0686 / 6.86%, MAE_OOS = 29.13, n_estimators=150, max_depth=6, min_samples_leaf=5).",
         )
 
         # Nhận định so sánh sai số
@@ -630,18 +633,19 @@ def render() -> None:
     st.markdown("---")
     st.markdown("### 🎓 Nhận Định Kinh Tế Lượng & Tính Bất Định Của Ca Khúc Hit")
     st.info(
-        r"📌 **Bối cảnh phương sai giải thích ($R^2 \approx 5.6\%$):**"
+        r"📌 **Bối cảnh phương sai giải thích ($R^2_{\text{OOS}} \approx 3.4\% - 6.9\%$):**"
         "\n\n"
         r"1. **Hiện tượng Co cụm về Trung vị (Shrinkage to Mean):** Điểm dự đoán của cả OLS (khoảng $-3$ đến $+13$) "
         r"và Random Forest (khoảng $+8$ đến $+21$) đều hội tụ quanh trung vị mẫu ($15.16$). Điều này phản ánh bản chất thống kê lành mạnh: "
-        r"khi một tập đặc trưng chỉ giải thích một phần phương sai ($R^2_{OLS}=0.057$, $R^2_{RF}=0.0558$), các mô hình tối ưu không được phép 'dự đoán cực đoan' "
+        r"khi một tập đặc trưng chỉ giải thích một phần phương sai ($R^2_{\text{OOS, OLS}}=0.0340$, $R^2_{\text{OOS, RF}}=0.0686$), các mô hình tối ưu không được phép 'dự đoán cực đoan' "
         "để tránh bùng nổ sai số bình phương.\n\n"
         r"2. **Bản chất của các siêu Hit (Superstar Effect):** Đối với các ca khúc Tier 1 đạt điểm cực đại ($\ge 80$), "
         r"khoảng cách sai số lớn giữa dự đoán (~$10-20$) và thực tế ($80-99$) minh chứng cho quy luật kinh tế học âm nhạc: "
         "*Đặc trưng âm học và ca từ cấu thành điều kiện cần (chất lượng sản phẩm), nhưng danh tiếng nghệ sĩ, chiến dịch truyền thông viral trên TikTok/Reels "
         "và thuật toán đề xuất của Spotify mới là động lực quyết định đưa bài hát trở thành siêu hit toàn cầu.*\n\n"
-        r"3. **Kiểm định Paired Bootstrap ($p = 0.473$):** Random Forest không vượt trội OLS có ý nghĩa thống kê trên tập kiểm thử ngoài mẫu, "
-        "khẳng định mối quan hệ giữa đặc trưng âm học và thành tích BXH mang tính chất tương quan biên (marginal association) hơn là các mẫu hình phi tuyến tính phức tạp."
+        r"3. **Kiểm định Paired Cluster Bootstrap ($\Delta\text{MAE} = +0.6505$, $95\%$ CI $[-0.8057, +2.0268]$):** "
+        "Do khoảng tin cậy 95% của chênh lệch sai số tuyệt đối chứa giá trị 0, sự vượt trội của Random Forest so với OLS Model 3 "
+        "chưa đạt ý nghĩa thống kê ở mức $\alpha = 0.05$ trên toàn bộ 3 thị trường, khẳng định mối quan hệ giữa đặc trưng âm học và thành tích BXH mang tính chất tương quan biên (marginal association) hơn là các mẫu hình phi tuyến tính phức tạp."
     )
 
     # 8. Bảng Tổng Hợp Toàn Bộ 15 Bài Mẫu
