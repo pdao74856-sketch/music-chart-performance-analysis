@@ -61,6 +61,9 @@ except ImportError:
         def expander(self, *args, **kwargs):
             return _MockStreamlitContext()
 
+        def spinner(self, *args, **kwargs):
+            return _MockStreamlitContext()
+
         def selectbox(self, label, options, *args, **kwargs):
             return options[0] if options else None
 
