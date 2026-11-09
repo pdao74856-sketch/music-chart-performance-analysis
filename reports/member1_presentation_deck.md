@@ -1,149 +1,114 @@
-# BÁO CÁO THUYẾT TRÌNH FINAL — THÀNH VIÊN 1 (MODELING & ECONOMETRIC LEAD)
-**Dự án:** What Makes a Hit Song? — Phân Tích Hiệu Suất Bảng Xếp Hạng Spotify Việt Nam, Hoa Kỳ & Hàn Quốc (2021–2026)  
-**Môn học:** ADY201m — Applied Data Analytics (Chuẩn Assignment v4.1)  
-**Phân công Member 1:** Trưởng nhóm Kinh tế lượng & Mô hình hóa OLS (Heteroskedasticity, Cluster-Robust SE, Nested OLS Models, Joint Wald Tests, Market-Specific Energy Slopes, Ramsey RESET & Giới hạn mô hình)  
-**Khung thời gian thuyết trình:** 11:30 — 18:30 (Thời lượng: đúng 7.0 phút, bàn giao tiếp theo cho **Member 4**)  
+# THUYẾT TRÌNH — THÀNH VIÊN 1 (MODELING & ANALYSIS LEAD)
+**Đề tài:** What Makes a Hit Song? — Spotify VN / US / KR, 2021–2026
+**Môn:** ADY201m — AI, Data Science with Python & SQL
+**Khung giờ:** 11:30 – 18:30 (7 phút, 4 slide). Phạm vi: chỉ phần TV1 đã làm theo CP1–CP3 và file test `reports/tests/01_tv1_ols_econometric_tests.md`.
+**Bám khung:** Data Science Methodology (Data Preparation → Modeling → Evaluation → Deployment) và thuật ngữ bài 6.7–6.8 Regression Analysis: biến phụ thuộc Y, biến giải thích X, hằng số β₀, hệ số (weight) β, error term ε, t statistic, p-value < 0,05, bác bỏ null hypothesis, statistically significant, dummy variable, statsmodels/OLS, R-squared.
+**Ngôn ngữ:** chỉ nói "liên quan / có tương quan", không nói nhân quả.
 
 ---
 
-## PHẦN 1. NỘI DUNG 4 SLIDE TRÌNH CHIẾU (DECK SLIDES)
-*(Dành cho Member 3 ráp trực tiếp vào file trình chiếu chung `reports/presentation_deck.pptx`)*
+## PHẦN 1. NỘI DUNG 4 SLIDE
 
-```mermaid
-flowchart LR
-    S1["Slide 1: Heteroskedasticity & Cluster-Robust SE"] --> S2["Slide 2: Nested OLS Models & Bootstrap CI"]
-    S2 --> S3["Slide 3: Joint Wald Tests & Market Energy Slopes"]
-    S3 --> S4["Slide 4: Ramsey RESET, Giới hạn OLS & Chuyển giao TV4"]
-```
+### SLIDE 1 — DATA PREPARATION: CHIA TRAIN/TEST KHÔNG RÒ RỈ, CHUẨN HÓA, KIỂM TRA ĐA CỘNG TUYẾN (11:30–13:00, 1′30″)
+- **Chia dữ liệu theo bài hát:** `GroupShuffleSplit` theo `spotify_track_id`, seed 43
+  - Train: 1.685 dòng / 1.527 bài. Test: 410 dòng / 382 bài (≈ 80/20)
+  - Một bài có thể xuất hiện ở tối đa 3 thị trường; riêng Train có 144 bài như vậy (130 bài ở 2 thị trường, 14 bài ở 3)
+- **Chuẩn hóa Z-score** (`StandardScaler`, fit trên Train): z = (x − μ) / σ; biến nhị phân `mode` giữ 0/1
+- **Kiểm tra đa cộng tuyến (VIF) trên 24 biến chính của Model 3:** cao nhất 3,77 (`word_count`) < 5
+  - Dùng `energy` thay `loudness_proxy` (loudness = 20·log₁₀(energy), hàm tất định)
+  - Loại `spectral_bandwidth` (r = 0,909 với `spectral_centroid`)
 
----
+### SLIDE 2 — MODELING: CHUỖI MÔ HÌNH HỒI QUY TUYẾN TÍNH BỘI LỒNG NHAU + SAI SỐ CHUẨN CỤM (13:00–14:45, 1′45″)
+- **Biến phụ thuộc (Y):** ChartScore = 101 − LifetimeAverageRank (liên tục, [−99, 100]); các biến giải thích (X): âm học, ca từ, bối cảnh
+- **4 bậc mô hình** (`statsmodels` OLS):
+  - Model 1: Audio (16 hệ số) → Model 2: + Lyrics (22) → Model 2b: + Context = `release_year` + 2 biến giả (dummy) thị trường (25) → Model 3: + 10 số hạng tương tác Feature × Market (35)
+- **Kiểm tra error term (Breusch–Pagan, Train N = 1.685):**
+  - LM = 84,07, χ²(34), p = 3,99 × 10⁻⁶; F(34; 1650) = 2,55, p = 2,73 × 10⁻⁶ → bác bỏ null hypothesis phương sai sai số đồng đều
+- **Quyết định:** dùng **sai số chuẩn vững theo cụm** (cluster-robust SE, cụm = `spotify_track_id`; Cameron & Miller, 2015) cho cả Model 1–3
+  - Lý do: phương sai không đồng đều + các dòng của cùng một bài có sai số tương quan → SE thường bị đánh giá thấp, p-value dễ "có ý nghĩa" giả
 
-### 🖥️ SLIDE 1: PHƯƠNG SAI THAY ĐỔI & CĂN CỨ BẮT BUỘC CLUSTER-ROBUST SE (CAMERON & MILLER, 2015)
-* **Tiêu đề Slide:** **Kiểm Định Phương Sai Sai Số & Chuẩn Hóa Sai Số Chuẩn Cụm (Cluster-Robust SE)**
-* **Thời gian trình bày:** 11:30 — 13:15 (1 phút 45 giây)
-* **Bố cục nội dung:**
-  1. **Khuyết tật phương sai sai số thay đổi (Heteroskedasticity):**
-     * **Kiểm định Breusch–Pagan (Train $N = 1,685$):**
-       * Thống kê LM: $84.07$ ($p = 3.99 \times 10^{-6}$)
-       * Thống kê F: $2.55$ ($p = 2.73 \times 10^{-6}$, $df = [34, 1650]$)
-       * *Kết luận:* Bác bỏ triệt để giả thuyết vô hiệu $H_0$ về phương sai đồng nhất ($p < 0.001$).
-  2. **Cấu trúc dữ liệu lặp đa thị trường & Tương quan nội cụm:**
-     * Mẫu nghiên cứu có **144 bài hát xuất hiện đồng thời ở từ 2 đến 3 thị trường** (102 bài ở 2 nước, 42 bài ở cả 3 nước), chiếm **330 dòng quan sát**.
-     * Các quan sát của cùng một ca khúc có sai số tương quan với nhau: $\text{Cov}(u_{it}, u_{is}) \ne 0$.
-  3. **Quyết định phương pháp luận bắt buộc:**
-     * White SE cổ điển chỉ xử lý được phương sai thay đổi mà vẫn giả định các quan sát độc lập. Khi có tương quan cụm, White SE sẽ **đánh giá thấp sai số chuẩn** (underestimated SE), dẫn đến thổi phồng giá trị $t$-statistic giả tạo.
-     * Áp dụng **Sai số chuẩn vững theo cụm track (`spotify_track_id`) theo Cameron & Miller (2015)** xuyên suốt từ Model 1 đến Model 3 để đảm bảo suy luận thống kê chuẩn xác.
+### SLIDE 3 — EVALUATION: ĐÁNH GIÁ NGOÀI MẪU, KIỂM ĐỊNH WALD THEO KHỐI, ĐỘ DỐC `energy` THEO THỊ TRƯỜNG (14:45–17:00, 2′15″)
+- **Hiệu năng trên tập Test (N = 410), baseline = trung bình Train theo thị trường (R² = 0,0018, MAE 30,27):**
 
----
+| Mô hình | R² Test | MAE Test |
+|---|---|---|
+| Model 1 (Audio) | −0,0013 | 30,63 |
+| Model 2 (+ Lyrics) | −0,0016 | 30,79 |
+| Model 2b (+ Context) | 0,0365 [−0,0151; 0,0822] | 30,06 |
+| Model 3 (+ Interactions) | 0,0340 [−0,0178; 0,0824] | 29,78 |
 
-### 🖥️ SLIDE 2: SO SÁNH CÁC BẬC MÔ HÌNH LỒNG NHAU (NESTED OLS) BẰNG BOOTSTRAP CI
-* **Tiêu đề Slide:** **Bậc Thang Mô Hình Kinh Tế Lượng OLS & Đánh Giá Ngoài Mẫu (Test $N=410$)**
-* **Thời gian trình bày:** 13:15 — 15:00 (1 phút 45 giây)
-* **Bố cục nội dung:**
-  1. **Đặc tả cấu trúc các bậc mô hình lồng nhau (Nested OLS Hierarchy):**
-     * **Model 1 (Audio Baseline):** $15$ biến âm học Librosa + $1$ hằng số ($16$ hệ số).
-     * **Model 2 (Audio + Lyrics):** Bổ sung $6$ biến ca từ NLP ($22$ hệ số).
-     * **Model 2b (+ Context):** Bổ sung `release_year_std` và $2$ biến giả thị trường ($25$ hệ số).
-     * **Model 3 (Full OLS with Interactions):** $34$ biến giải thích + $1$ hằng số = **$35$ hệ số ước lượng** (gồm $10$ số hạng tương tác thị trường).
-  2. **Hiệu năng ngoài mẫu trên tập Test ($N = 410$ quan sát, $382$ ca khúc độc bản):**
-     * **Model 1:** $R^2 = -0.0013$, $\text{MAE} = 30.63$.
-     * **Model 2:** $R^2 = -0.0016$, $\text{MAE} = 30.79$.
-     * **Model 2b:** $R^2 = 0.0365$, 95% CI $[-0.0151, 0.0822]$, $\text{MAE} = 30.06$.
-     * **Model 3:** $R^2 = 0.0340$, 95% CI $[-0.0178, 0.0824]$, $\text{MAE} = 29.78$.
-  3. **Diễn giải thống kê thận trọng qua Paired Cluster Bootstrap:**
-     * **Từ Model 2 lên Model 2b:** $R^2$ tăng theo giá trị ước lượng điểm ($+0.0365$), tuy nhiên khoảng tin cậy 95% của $\Delta R^2$ là $[-0.0151, 0.0822]$ **vẫn bao hàm giá trị 0** $\rightarrow$ Chưa đủ bằng chứng thống kê khẳng định sự cải thiện rõ ràng ngoài mẫu.
-     * **Từ Model 2b lên Model 3:** Việc bổ sung 10 số hạng tương tác thị trường làm $R^2$ giảm nhẹ ($0.0340$ so với $0.0365$) và khoảng tin cậy chứa 0 $\rightarrow$ Chưa cho thấy sự cải thiện rõ ràng về khả năng dự đoán ngoài mẫu.
+- **So sánh ghép cặp (bootstrap theo cụm bài hát):**
+  - M1 → M2: ΔMAE −0,15 [−0,49; +0,19]
+  - **M2 → M2b: ΔMAE +0,73 [+0,13; +1,38]; ΔR² +0,038 [+0,001; +0,078]** — bước duy nhất có khoảng tin cậy không chứa 0 (sát biên, chưa hiệu chỉnh đa so sánh)
+  - M2b → M3: ΔMAE +0,28 [−0,10; +0,63] → chứa 0
+  - (ΔMAE > 0: mô hình sau có MAE thấp hơn)
+- **Joint Wald test theo khối (Model 3, SE cụm, hiệu chỉnh Holm):**
+  - Audio: χ²(15) = 39,84, p = 0,0005 (Holm 0,0014) · Context: χ²(3) = 39,27, p = 1,5 × 10⁻⁸ (Holm 6,1 × 10⁻⁸)
+  - Lyrics: χ²(6) = 11,74, p = 0,068 (Holm 0,113) · Interactions: χ²(10) = 17,91, p = 0,057 (Holm 0,113)
+- **Hệ số góc của `energy` theo thị trường** (ChartScore thay đổi theo 1 độ lệch chuẩn của `energy`):
+  - US −4,62 [−8,43; −0,81], p = 0,017 · VN +0,07, p = 0,976 · KR −0,93, p = 0,660
+  - Kiểm định chung 2 bậc tự do cho `energy` × Market: p = 0,148 (Holm 0,593) → chỉ là gợi ý
 
----
-
-### 🖥️ SLIDE 3: KIỂM ĐỊNH WALD KHỐI & SỰ KHÁC BIỆT HỆ SỐ NĂNG LƯỢNG (ENERGY SLOPES)
-* **Tiêu đề Slide:** **Kiểm Định Wald Đồng Thời Khối Biến & Phân Kỳ Hệ Số Năng Lượng Giữa Các Nước**
-* **Thời gian trình bày:** 15:00 — 16:45 (1 phút 45 giây)
-* **Bố cục nội dung:**
-  1. **Kiểm định Wald đồng thời theo khối (Joint Wald Block Tests trên Model 3):**
-     * **Khối Âm học (Audio - 15 DOF):** $\chi^2 = 39.84, p = 0.00048, p_{\text{Holm}} = 0.00144$ $\rightarrow$ Có ý nghĩa thống kê cao.
-     * **Khối Ca từ (Lyrics - 6 DOF):** $\chi^2 = 11.74, p = 0.0679, p_{\text{Holm}} = 0.113$ $\rightarrow$ Chưa đạt mức ý nghĩa 5%.
-     * **Khối Bối cảnh (Context - 3 DOF):** $\chi^2 = 39.27, p = 1.52 \times 10^{-8}$ $\rightarrow$ Có ý nghĩa thống kê cực mạnh.
-     * **Khối Tương tác thị trường (Interactions - 10 DOF):** $\chi^2 = 17.91, p = 0.0566, p_{\text{Holm}} = 0.113$ $\rightarrow$ Chưa đạt mức ý nghĩa 5% sau hiệu chỉnh Holm.
-  2. **Phân kỳ hệ số góc Năng lượng (Market-Specific Energy Slopes):**
-     * **Hoa Kỳ (US - Baseline):** $\beta = -4.62$ ($SE = 1.94, p = 0.017$, CI $[-8.43, -0.81]$) $\rightarrow$ Tác động âm có ý nghĩa thống kê; khán giả Mỹ ưa chuộng các ca khúc có mức năng lượng vừa phải, kiểm soát.
-     * **Việt Nam (VN):** $\beta = +0.07$ ($SE = 2.38, p = 0.976$, CI $[-4.59, +4.73]$) $\rightarrow$ Hệ số gần 0, không có ý nghĩa thống kê.
-     * **Hàn Quốc (KR):** $\beta = -0.93$ ($SE = 2.12, p = 0.660$, CI $[-5.09, +3.22]$) $\rightarrow$ Không có ý nghĩa thống kê.
-     * *Kết luận:* Hiệu ứng của đặc trưng âm học không đồng nhất giữa các nền văn hóa âm nhạc.
+### SLIDE 4 — CHẨN ĐOÁN, GIỚI HẠN VÀ DEPLOYMENT (TAB 4) (17:00–18:30, 1′30″)
+- **Ramsey RESET** (ŷ² và ŷ³, Train): F(2; 1648) = 12,37, p = 4,67 × 10⁻⁶; Wald cụm χ²(2) = 9,22, p = 0,00996 → gợi ý dạng hàm tuyến tính chưa đủ (phi tuyến hoặc thiếu biến)
+- **Độ nhạy:** Cook's D tối đa 0,0152; 95/1.685 quan sát vượt ngưỡng 4/n (5,6%); bỏ các bài trước 1980 thì p của khối tương tác 0,057 → 0,194
+- **Giới hạn:** R² Test chỉ 3,4% (R² Train 6,6%); `release_year` có thể phản ánh thời gian xuất hiện lâu trên bảng xếp hạng; kết quả là **tương quan, không phải nhân quả**
+- **Deployment:** Tab 4 trên web app đọc trực tiếp các kết quả trên từ file trong repo (không tính lại, không nhập tay)
 
 ---
 
-### 🖥️ SLIDE 4: RAMSEY RESET, GIỚI HẠN DẠNG HÀM VÀ CHUYỂN GIAO TIẾP THEO
-* **Tiêu đề Slide:** **Kiểm Định Dạng Hàm Ramsey RESET & Giới Hạn Phương Pháp Luận Của OLS**
-* **Thời gian trình bày:** 16:45 — 18:30 (1 phút 45 giây)
-* **Bố cục nội dung:**
-  1. **Kiểm định dạng hàm Ramsey RESET:**
-     * **Kết quả kiểm định Wald cụm (Assignment v4.1):** $\chi^2 = 9.22, df = 2, p = 0.010$.
-     * *Diễn giải chuẩn mực:* Bác bỏ giả thuyết dạng hàm tuyến tính chuẩn xác ($p = 0.010$). Kết quả cho thấy mô hình OLS có thể gặp vấn đề về đặc tả hoặc dạng hàm, gợi ý cấu trúc quan hệ thực tế có thể phức tạp hơn dạng tuyến tính thuần túy.
-  2. **Giới hạn phương pháp luận của mô hình OLS:**
-     * $R^2$ ngoài mẫu ở mức khiêm tốn ($3.4\%$) phản ánh thành bại của bài hát chịu sự chi phối lớn của các yếu tố ngoại sinh chưa quan sát được (unobserved factors: viral marketing, nghệ sĩ danh tiếng, xu hướng mạng xã hội).
-     * Mọi ước lượng chỉ phản ánh **liên hệ thống kê quan sát được (association)**, tuyệt đối không suy diễn quan hệ nhân quả.
-  3. **Chuyển giao nội dung cho Member 4 (18:30):**
-     * Để giải quyết các nghi vấn về dạng hàm phi tuyến từ kiểm định RESET, xin mời **Member 4** trình bày về mô hình đối chuẩn **Random Forest Benchmark ($R^2 = 0.0686, \text{MAE} = 29.13$)** và hệ thống Dashboard ứng dụng.
+## PHẦN 2. KỊCH BẢN LỜI NÓI (≈ 7 PHÚT)
+
+> **[11:30 – 13:00] SLIDE 1 — DATA PREPARATION**
+> "Em là Thành viên 1, phụ trách phần mô hình hóa. Theo Data Science Methodology, em bắt đầu từ bước Data Preparation, vì đây là bước quyết định kết quả đánh giá có trung thực hay không.
+> Thứ nhất là cách chia dữ liệu. Một bài hát có thể xuất hiện ở tối đa ba thị trường, nên nếu chia theo từng dòng thì cùng một bài sẽ nằm ở cả Train và Test, gây rò rỉ dữ liệu. Em chia theo `spotify_track_id`, hạt giống 43: Train có 1.685 dòng ứng với 1.527 bài, Test có 410 dòng ứng với 382 bài, khoảng 80/20. Riêng Train có 144 bài xuất hiện ở nhiều thị trường.
+> Thứ hai, em chuẩn hóa Z-score, tức là trừ trung bình và chia độ lệch chuẩn, với tham số chỉ tính trên Train.
+> Thứ ba là kiểm tra đa cộng tuyến bằng VIF. Với 24 biến chính của Model 3, VIF lớn nhất là 3,77, thấp hơn ngưỡng 5. Để đạt được điều này, em dùng `energy` thay cho `loudness_proxy`, vì loudness chính là 20 log10 của energy, và loại `spectral_bandwidth` vì tương quan 0,909 với `spectral_centroid`."
+>
+> **[13:00 – 14:45] SLIDE 2 — MODELING**
+> "Sang bước Modeling, biến phụ thuộc Y là ChartScore bằng 101 trừ thứ hạng trung bình, là biến liên tục, và các biến giải thích X là đặc trưng âm học, ca từ và bối cảnh. Em dùng thư viện statsmodels để xây bốn bậc hồi quy tuyến tính bội lồng nhau: Model 1 chỉ có âm học, Model 2 thêm ca từ, Model 2b thêm bối cảnh gồm năm phát hành và biến giả, tức dummy, cho thị trường, và Model 3 thêm mười số hạng tương tác giữa đặc trưng và thị trường. Cách lồng nhau này giúp tách xem mỗi nhóm biến đóng góp thêm bao nhiêu.
+> Trước khi tin vào p-value, em kiểm tra error term, tức phần mô hình không giải thích được, bằng Breusch–Pagan: LM bằng 84,07 với bậc tự do 34, p cỡ 4 nhân 10 mũ trừ 6. Em bác bỏ null hypothesis rằng phương sai sai số đồng đều. Thêm nữa, các dòng của cùng một bài hát có sai số tương quan với nhau. Vì vậy em dùng sai số chuẩn vững theo cụm bài hát cho cả ba mô hình. Nếu dùng sai số thường, sai số chuẩn bị đánh giá thấp và p-value dễ cho kết luận có ý nghĩa một cách giả tạo."
+>
+> **[14:45 – 17:00] SLIDE 3 — EVALUATION**
+> "Bước Evaluation, em đánh giá trên tập Test mà mô hình chưa thấy. Mốc so sánh là baseline, dự đoán bằng trung bình Train theo thị trường, với R² bằng 0,0018.
+> Model 1 và Model 2 có R² âm nhẹ, nghĩa là dự đoán không tốt hơn việc đoán trung bình. Khi thêm bối cảnh ở Model 2b, R-squared lên 0,0365 và MAE giảm từ 30,79 xuống 30,06. Em kiểm tra bằng bootstrap theo cụm bài hát: bước từ Model 2 lên 2b là bước duy nhất mà khoảng tin cậy 95% của mức giảm MAE, từ 0,13 đến 1,38, không chứa 0. Nhưng đây là bước sát biên và em chưa hiệu chỉnh cho nhiều phép so sánh. Các bước còn lại đều có khoảng tin cậy chứa 0, kể cả khi thêm tương tác ở Model 3.
+> Em cũng dùng kiểm định Wald đồng thời cho từng khối biến. Khối Âm học và khối Bối cảnh có ý nghĩa thống kê, statistically significant, ngay cả sau hiệu chỉnh Holm. Khối Ca từ có p bằng 0,068 và khối Tương tác có p bằng 0,057, chưa đạt mức 5%.
+> Cuối cùng là hệ số góc của `energy` theo thị trường. Ở Mỹ, hệ số hồi quy, tức weight của `energy`, là âm 4,62: `energy` cao hơn một độ lệch chuẩn đi kèm ChartScore thấp hơn khoảng 4,6 điểm. Ở Việt Nam hệ số gần 0, ở Hàn Quốc là âm 0,93, đều không có ý nghĩa thống kê, vì p-value lớn hơn 0,05. Kiểm định chung cho `energy` nhân thị trường có p bằng 0,148, nên em chỉ xem đây là gợi ý, không phải bằng chứng chắc chắn về khác biệt giữa các thị trường."
+>
+> **[17:00 – 18:30] SLIDE 4 — DIAGNOSTICS, GIỚI HẠN, DEPLOYMENT**
+> "Về chẩn đoán, kiểm định Ramsey RESET cho F bằng 12,37 và p cỡ 5 nhân 10 mũ trừ 6; dùng sai số cụm thì p bằng 0,00996. Kết quả này gợi ý dạng hàm tuyến tính chưa đủ, có thể do quan hệ phi tuyến hoặc thiếu biến, nhưng bản thân kiểm định không cho biết nguyên nhân. Em cũng kiểm tra độ nhạy: khoảng cách Cook lớn nhất chỉ 0,0152, và nếu bỏ các bài trước 1980 thì p của khối tương tác tăng từ 0,057 lên 0,194.
+> Về giới hạn, R² Test chỉ 3,4%, mô hình giải thích được rất ít biến thiên của ChartScore. Biến năm phát hành có thể phản ánh việc bài hát đã ở trên bảng xếp hạng lâu, chứ không hẳn là đặc tính âm nhạc. Mọi kết quả của em là tương quan, không phải nhân quả.
+> Ở bước Deployment, toàn bộ kết quả kiểm định này được đưa lên Tab 4 của web app, đọc trực tiếp từ file trong repo nên số liệu trên app và trên slide luôn trùng nhau. Em xin chuyển sang bạn tiếp theo. Em cảm ơn Thầy Cô."
 
 ---
 
-## PHẦN 2. KỊCH BẢN THUYẾT TRÌNH (SPEECH SCRIPT — 7.0 PHÚT)
-*(Khẩu khí học thuật, chính xác, bám sát timeline 11:30 – 18:30 theo phân công v4.1)*
+## PHẦN 3. Q&A (CHỈ PHẦN TV1)
 
-> **[11:30 — 13:15] SLIDE 1: HETEROSKEDASTICITY & CLUSTER-ROBUST STANDARD ERRORS**  
-> *"Kính thưa Thầy/Cô và Hội đồng, em là Thành viên 1, đảm nhiệm vai trò **Modeling & Econometric Lead** của đề tài. Phần trình bày của em tập trung vào kiểm định giả định mô hình, ước lượng chuỗi mô hình OLS lồng nhau và phân tích các hệ số kinh tế lượng.*  
->  
-> *(Chuyển sang Slide 1)*  
-> *Thách thức phương pháp luận đầu tiên mà nhóm phải đối mặt khi ước lượng mô hình hồi quy là kiểm tra các giả định cổ điển của OLS. Khi thực hiện kiểm định Breusch–Pagan trên tập Train $N = 1,685$ quan sát, giá trị thống kê $LM$ đạt $84.07$ với $p = 3.99 \times 10^{-6}$, bác bỏ hoàn toàn giả định phương sai sai số đồng nhất.*  
-> *Đặc biệt, về mặt cấu trúc dữ liệu, mẫu của nhóm có **144 ca khúc xuất hiện đồng thời ở từ 2 đến 3 thị trường, tạo ra 330 dòng quan sát lặp lại**. Điều này vi phạm nghiêm trọng giả định về tính độc lập giữa các sai số, dẫn tới hiện tượng tương quan nội cụm: $\text{Cov}(u_{it}, u_{is}) \ne 0$.*  
-> *Nếu chỉ sử dụng sai số chuẩn OLS thông thường hoặc White SE, sai số chuẩn sẽ bị đánh giá thấp (underestimated), làm cho giá trị kiểm định $t$ bị thổi phồng giả tạo và dẫn tới kết luận sai lệch về ý nghĩa thống kê. Vì vậy, em đã chuẩn hóa bắt buộc việc áp dụng **Sai số chuẩn vững theo cụm track (`spotify_track_id`) theo phương pháp luận kinh điển của Cameron & Miller (2015)** xuyên suốt từ Model 1 đến Model 3 để đảm bảo suy luận thống kê vững chắc."*  
->  
-> ---  
->  
-> **[13:15 — 15:00] SLIDE 2: NESTED OLS MODELS & ĐÁNH GIÁ NGOÀI MẪU**  
-> *(Chuyển sang Slide 2)*  
-> *Tiếp theo, nhóm xây dựng chuỗi 4 bậc mô hình hồi quy lồng nhau để phân tách đóng góp của từng nhóm đặc trưng: Model 1 là Audio Baseline gồm 15 biến âm học Librosa; Model 2 bổ sung 6 biến ca từ NLP; Model 2b bổ sung biến năm phát hành và biến giả thị trường; và Model 3 là Full OLS với 34 biến giải thích cùng 1 hằng số, tương ứng **35 hệ số ước lượng**, bao gồm 10 số hạng tương tác thị trường.*  
->  
-> *Khi đánh giá hiệu năng ngoài mẫu trên tập Test độc lập gồm $410$ quan sát tương ứng $382$ ca khúc độc bản:*  
-> *Model 1 và Model 2 cho $R^2$ âm nhẹ ($-0.0013$ và $-0.0016$) với MAE quanh mức $30.7$.*  
-> *Khi chuyển sang Model 2b, $R^2$ ước lượng điểm tăng lên $0.0365$ và MAE giảm xuống $30.06$. Tuy nhiên, qua kiểm định Paired Cluster Bootstrap, khoảng tin cậy 95% của $\Delta R^2$ là $[-0.0151, 0.0822]$ **vẫn bao hàm giá trị 0**. Vì vậy, về mặt học thuật nghiêm cẩn, chúng em kết luận: dù $R^2$ có tăng theo ước lượng điểm, nhưng dữ liệu ngoài mẫu chưa đủ bằng chứng thống kê để khẳng định việc thêm `release_year` tạo ra bước cải thiện rõ ràng.*  
-> *Tương tự, khi chuyển từ Model 2b lên Model 3, việc bổ sung 10 số hạng tương tác thị trường làm $R^2$ giảm nhẹ về $0.0340$ (MAE $= 29.78$), cho thấy các số hạng tương tác phức tạp chưa mang lại sự cải thiện rõ ràng về khả năng dự đoán ngoài mẫu."*  
->  
-> ---  
->  
-> **[15:00 — 16:45] SLIDE 3: JOINT WALD TESTS & PHÂN KỲ HỆ SỐ NĂNG LƯỢNG**  
-> *(Chuyển sang Slide 3)*  
-> *Để đánh giá ý nghĩa thống kê đồng thời của từng khối biến trong Model 3, em tiến hành kiểm định Joint Wald Test với sai số chuẩn cụm:*  
-> *Khối Âm học ($\chi^2 = 39.84, p = 0.00048$) và Khối Bối cảnh ($\chi^2 = 39.27, p < 0.001$) đều có ý nghĩa thống kê rất cao sau hiệu chỉnh Holm. Ngược lại, Khối Ca từ ($p = 0.068$) và Khối Tương tác thị trường ($p = 0.057$) chưa đạt mức ý nghĩa 5%.*  
->  
-> *Đặc biệt, khi phân rã độ dốc tác động theo từng thị trường (Market-Specific Slopes), biến Năng lượng (`energy`) thể hiện sự phân kỳ văn hóa rất rõ nét:*  
-> *Tại thị trường Hoa Kỳ (đóng vai trò Baseline), hệ số góc của năng lượng âm và có ý nghĩa thống kê: $\beta = -4.62$ ($SE = 1.94, p = 0.017$, CI $[-8.43, -0.81]$). Điều này cho thấy tại Mỹ, các ca khúc đạt thứ hạng cao có xu hướng duy trì mức năng lượng kiểm soát, vừa phải.*  
-> *Trong khi đó, tại Việt Nam ($\beta = +0.07, p = 0.976$) và Hàn Quốc ($\beta = -0.93, p = 0.660$), hệ số góc đều không có ý nghĩa thống kê. Sự phân kỳ này khẳng định đặc trưng âm học không tác động một chiều mà có tính đặc thù theo từng thị hiếu địa phương."*  
->  
-> ---  
->  
-> **[16:45 — 18:30] SLIDE 4: RAMSEY RESET, GIỚI HẠN OLS & CHUYỂN GIAO THUYẾT TRÌNH**  
-> *(Chuyển sang Slide 4)*  
-> *Cuối cùng, em thực hiện kiểm định Ramsey RESET để kiểm tra giả định về dạng hàm tuyến tính. Kết quả kiểm định Wald cụm cho $\chi^2 = 9.22$ với $df = 2$ và $p = 0.010$, bác bỏ giả thuyết dạng hàm tuyến tính chuẩn xác.*  
-> *Kết quả có ý nghĩa thống kê này gợi ý rằng mô hình hồi quy có thể gặp vấn đề về đặc tả dạng hàm, cho thấy mối liên hệ thực tế giữa các đặc trưng âm nhạc và thứ hạng chart có thể phức tạp hơn một đường thẳng thuần túy.*  
->  
-> *Về mặt giới hạn phương pháp luận, nhóm xin nhấn mạnh rằng $R^2$ Test đạt mức $3.4\%$ phản ánh tính chất thực tế của ngành công nghiệp âm nhạc, nơi thành công thương mại chịu ảnh hưởng lớn từ các yếu tố ngoại sinh chưa quan sát được (unobserved factors) như truyền thông hay danh tiếng nghệ sĩ. Toàn bộ kết quả đều được nhóm diễn giải dưới dạng liên hệ thống kê (association), không suy diễn quan hệ nhân quả.*  
->  
-> *Để trả lời cho câu hỏi: Liệu một cấu trúc phi tuyến linh hoạt có thể khai thác tốt hơn các tín hiệu dữ liệu này hay không? Sau đây, em xin được kết thúc phần trình bày của mình và chuyển giao phần tiếp theo cho **Member 4** để giới thiệu về mô hình đối chuẩn **Random Forest Benchmark** và phân hệ ứng dụng Dashboard. Xin trân trọng cảm ơn Thầy/Cô!"*
+**Q1. Vì sao R² Test thấp, thậm chí âm ở Model 1 và 2?**
+R² Test âm nghĩa là mô hình dự đoán bài hát mới kém hơn việc dùng trung bình. Điều này cho thấy đặc trưng âm học và ca từ, riêng chúng, liên quan rất ít đến ChartScore của bài chưa từng thấy. Chúng em báo cáo đúng như vậy, và không dùng R² Train (6,6%) để thay cho kết quả Test.
+
+**Q2. Vì sao dùng sai số chuẩn vững theo cụm mà không dùng sai số OLS thường?**
+Breusch–Pagan bác bỏ phương sai đồng đều (p ≈ 4 × 10⁻⁶), và cùng một bài hát có thể có tới 3 dòng, sai số của chúng tương quan. Khi đó SE thường bị thấp, t-statistic bị thổi phồng. Cụm theo `spotify_track_id` xử lý cả hai vấn đề.
+
+**Q3. Vì sao dùng `energy` mà không dùng `loudness_proxy`?**
+`loudness_proxy` = 20·log₁₀(energy), là hàm tất định của `energy`. Đưa cả hai vào hồi quy tuyến tính gây đa cộng tuyến, VIF vượt xa 5. Hồi quy tuyến tính cần ma trận biến độc lập không bị suy biến nên em chỉ giữ `energy`.
+
+**Q4. Ramsey RESET có p nhỏ, có nghĩa là quan hệ chắc chắn phi tuyến không?**
+Không. RESET chỉ gợi ý dạng hàm tuyến tính chưa đủ; nguyên nhân có thể là phi tuyến hoặc thiếu biến. Vì vậy em nêu đây là giới hạn của mô hình, không kết luận thêm.
+
+**Q5. Có thể nói âm nhạc "khiến" bài hát lên chart không?**
+Không. Đây là phân tích tương quan trên dữ liệu quan sát. Hệ số cho biết mức liên quan sau khi kiểm soát các biến còn lại, không đo tác động can thiệp, và mô hình không có biến như nghệ sĩ hay ngân sách quảng bá.
+
+**Q6. Vì sao bước M2 → M2b "có ý nghĩa" mà em vẫn thận trọng?**
+Khoảng tin cậy của ΔMAE [+0,13; +1,38] và ΔR² [+0,001; +0,078] chỉ vừa qua 0, chưa hiệu chỉnh đa so sánh, và R² Test của Model 2b vẫn có khoảng tin cậy chứa 0. Hơn nữa `release_year` có thể là biến phản ánh thời gian xuất hiện trên bảng xếp hạng.
 
 ---
 
-## PHẦN 3. BỘ CÂU HỎI & TRẢ LỜI PHẢN BIỆN CHUYÊN MÔN (Q&A DEFENSE)
-
-### ❓ Câu 1: Tại sao nhóm lại loại bỏ biến `spectral_bandwidth` khỏi ma trận OLS?
-> **Trả lời:**  
-> *"Dạ thưa Thầy/Cô, OLS không giả định rằng các biến giải thích không được tương quan với nhau. Tuy nhiên, tương quan thực nghiệm giữa `spectral_centroid` và `spectral_bandwidth` lên tới $r = 0.897$. Mức độ tương quan quá cao này gây ra hiện tượng **đa cộng tuyến nghiêm trọng (severe multicollinearity)**, làm tăng vọt phương sai và sai số chuẩn của các hệ số ước lượng, khiến việc ước lượng và phân tách tác động riêng phần (ceteris paribus) của từng biến trở nên không chính xác và bất ổn định. Vì vậy, nhóm quyết định loại bỏ `spectral_bandwidth` và giữ lại `spectral_centroid` cùng `energy_std`, bảo toàn được thông tin độ sáng và năng lượng vật lý mà vẫn đưa VIF toàn bộ ma trận về mức an toàn dưới 3.8."*
-
-### ❓ Câu 2: Tại sao kiểm định Breusch–Pagan đã ra $p < 0.001$ mà nhóm không dùng White SE mà phải dùng Cluster SE theo track?
-> **Trả lời:**  
-> *"Dạ thưa Thầy/Cô, White SE chỉ xử lý được phương sai thay đổi (heteroskedasticity) trong điều kiện các quan sát độc lập nhau. Tuy nhiên, mẫu của nhóm có 144 bài hát xuất hiện ở từ 2 đến 3 thị trường, tạo ra 330 dòng quan sát lặp lại. Giữa các thị trường của cùng một ca khúc, sai số chắc chắn có tương quan nội cụm ($\text{Cov}(u_{it}, u_{is}) \ne 0$). Theo Cameron & Miller (2015), nếu tồn tại tương quan cụm mà vẫn dùng White SE thì sai số chuẩn vẫn bị chệch xuống dưới (underestimated), làm giá trị kiểm định t bị thổi phồng giả tạo. Vì vậy bắt buộc phải dùng Cluster-Robust SE phân cụm theo `spotify_track_id` để suy luận thống kê được chuẩn xác."*
-
-### ❓ Câu 3: Kiểm định Ramsey RESET cho $p = 0.010$, có phải điều này chứng minh chắc chắn mối quan hệ trong dữ liệu là phi tuyến?
-> **Trả lời:**  
-> *"Dạ thưa Thầy/Cô, về mặt kinh tế lượng, kiểm định Ramsey RESET bác bỏ giả thuyết $H_0$ ($p = 0.010$) chỉ cho thấy mô hình có bằng chứng về **sai dạng hàm hoặc khuyết tật đặc tả (functional form misspecification)**. Điều này gợi ý rằng dạng hàm tuyến tính thuần túy có thể chưa bao quát hết cấu trúc quan hệ, nhưng chưa đủ để khẳng định chắc chắn bản chất mối quan hệ là phi tuyến nào. Đây chính là lý do phương pháp luận nhóm xây dựng kiến trúc song hành (Dual-Model), sử dụng Random Forest Benchmark để đối chuẩn kiểm chứng ngoài mẫu như Member 4 sẽ trình bày ngay sau đây ạ."*
+## PHẦN 4. THAY ĐỔI SO VỚI BẢN ĐÃ COMMIT (`9a2fb0c`)
+1. **Sửa số sai:** "144 bài, 102 bài ở 2 nước, 42 bài ở 3 nước, 330 dòng" → Train: 144 bài (130 ở 2 thị trường, 14 ở 3).
+2. **Sửa lỗi nặng ở Slide 2 cũ:** bản cũ gán khoảng tin cậy của R² Model 2b cho ΔR² và kết luận "chứa 0". Số đúng: ΔR² +0,038 [+0,001; +0,078], ΔMAE +0,73 [+0,13; +1,38], không chứa 0.
+3. Sửa r(centroid, bandwidth) 0,897 → 0,909.
+4. Bỏ các cụm đã nhân quả/phóng đại: "khán giả Mỹ ưa chuộng…", "phân kỳ văn hóa rõ nét… khẳng định", "chi phối bởi viral marketing, nghệ sĩ danh tiếng" (không đo được).
+5. Sửa tên môn: "Applied Data Analytics" → "AI, Data Science with Python & SQL".
+6. Sắp xếp lại theo Data Science Methodology và bỏ phần RF, Tab khác (chỉ giữ 1 câu chuyển giao).
+7. Thêm kết quả bổ sung: baseline, Cook's D, độ nhạy pre-1980, kiểm định chung energy × Market (p = 0,148).
