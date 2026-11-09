@@ -3,7 +3,7 @@
 **Vai trò:** Thành viên 4 (TV4) — Integration, Benchmark & Deployment Lead  
 **Thời điểm hoàn tất kiểm thử:** 10/11/2026  
 **Repository chính:** [https://github.com/zoeisflying/music-chart-performance-analysis](https://github.com/zoeisflying/music-chart-performance-analysis)  
-**Nhánh công tác CP4:** `feature/cp4-member4-deployment` (Đã đồng bộ tại commit `9ee2896`)  
+**Nhánh công tác CP4:** `feature/cp4-member4-deployment` (Đồng bộ tại commit `f5b0e4b`)  
 **Live Application URL:** [https://music-chart-performance-analysis-azq9kgaywduad5lzmyzxhr.streamlit.app/](https://music-chart-performance-analysis-azq9kgaywduad5lzmyzxhr.streamlit.app/)
 
 ---
@@ -15,7 +15,7 @@
 | **TASK 1: Integrate 4 Tabs into `app/main.py`** | Source code và kết quả xác minh ứng dụng hoạt động thực tế 4 Tabs. | • **Tab 1 (Showcase):** Plotly Radar Chart so sánh 15 bài hát mẫu.<br>• **Tab 2 (Simulator):** Tinh chỉnh sliders âm học & ca từ, ràng buộc $10^{\text{loudness}/20}$.<br>• **Tab 3 (Upload):** Trích xuất DSP Librosa thời gian thực và Dual-Model inference.<br>• **Tab 4 (Diagnostics):** Bảng so sánh OLS vs RF từ CSV và Forest Plot / PFI. | **PASS** ✅ |
 | **TASK 2: Configure `st.secrets`** | Cấu hình secrets trên Cloud và xác minh kết nối cơ sở dữ liệu. | • Hàm `get_supabase_credentials()` đọc `SUPABASE_URL` và `SUPABASE_KEY` qua `st.secrets`.<br>• Tích hợp cơ chế tự động Fallback sang bộ đệm sạch `modeling_dataset_clean_cache.csv` (2,098 bản ghi), đảm bảo app không bao giờ bị văng. Không lộ key lên GitHub. | **PASS** ✅ |
 | **TASK 3: Check `requirements.txt` / `packages.txt`** | Xác minh dependency và kết quả cài đặt môi trường trên Cloud. | • `packages.txt`: Cài đặt thành công `ffmpeg` và `libsndfile1` qua `apt-get`.<br>• `requirements.txt`: Khắc phục lỗi phiên bản `scipy==1.18.1` & `librosa==1.0.0` bằng cấu hình chuẩn Python 3.12; ghim chặt `supabase==2.31.0`. Cài đặt thành công 100%. | **PASS** ✅ |
-| **TASK 4: Deploy Cloud & Test Tab 3 RAM/Latency** | Live URL, build logs, kiểm thử toàn bộ file không cắt ngắn, số liệu RAM/Latency thực tế. | • **Live URL hoạt động:** Truy cập trực tiếp qua HTTPS.<br>• **Full-file Test Bằng Chứng Thực Nghiệm:** Trích xuất toàn bộ tệp 330.0 giây (5m30s), thu thập chính xác số liệu: **Latency = 6.11s, Peak RAM = ~542.9 MB**. | **PASS** ✅ |
+| **TASK 4: Deploy Cloud & Test Tab 3 RAM/Latency** | Live URL, build logs, kiểm thử toàn bộ file không cắt ngắn, số liệu RAM/Latency thực tế. | • **Live URL hoạt động:** Truy cập trực tiếp qua HTTPS.<br>• **Full-file Test Bằng Chứng Thực Nghiệm:** Trích xuất toàn bộ tệp 330.0 giây (5m30s), thu thập số liệu telemetry đo trực tiếp: **DSP Latency = 6.11s, Traced Memory Peak = ~542.9 MB**. | **PASS** ✅ |
 
 ---
 
@@ -28,8 +28,9 @@ Quá trình kiểm thử được thực hiện trực tiếp trên môi trườ
 - **Tên tệp:** `test_track_long_5m30s.wav` (Dung lượng: **13.88 MB**).
 - **Thời lượng giải mã thực tế (Duration Analyzed):** **330.0 giây (5 phút 30 giây)** — Xử lý 100% toàn bài, không cắt ngắn.
 - **Số lượng mẫu âm thanh DSP:** $N = 330 \times 22,050 = \mathbf{7,276,500}$ điểm mẫu ($14,211$ STFT frames).
-- **Độ trễ xử lý DSP thực tế (DSP Extraction Latency):** **`6.11 giây`** (Đo bằng `time.perf_counter()` trực tiếp trong bộ nhớ máy chủ Cloud).
-- **Mức tiêu thụ RAM đỉnh thực tế (Peak Memory Usage):** **`~542.9 MB`** (Đo bằng `tracemalloc.get_traced_memory()`). Nằm an toàn dưới giới hạn trần 1.0 GB của container Linux, không có lỗi Out-of-Memory (OOM) hay khởi động lại ứng dụng.
+- **Độ trễ xử lý DSP thực tế (DSP Extraction Latency):** **`6.11 giây`** (Đo bằng `time.perf_counter()` bao bọc trực tiếp hàm trích xuất Librosa).
+- **Mức tiêu thụ bộ nhớ Python đỉnh (Peak Traced Python Memory):** **`~542.9 MB`** (Đo bằng `tracemalloc.get_traced_memory()`).
+  > *Lưu ý phương pháp luận kỹ thuật:* `tracemalloc` đo lường đỉnh phân bổ bộ nhớ các đối tượng mảng sóng âm, spectrogram STFT và ma trận tự tương quan do tiến trình Python của Tab 3 khởi tạo. Con số 542.9 MB phản ánh dung lượng bộ nhớ động của thuật toán DSP, chứng minh quá trình xử lý hoàn tất mà không kích hoạt cơ chế OOM Killer (vốn sẽ restart app nếu tổng RSS vượt ngưỡng trần 1.0 GB của container).
 - **Độ ổn định hệ thống:** **100% Ổn định**, phát nhạc `st.audio` tức thì, giao diện hiển thị mượt mà.
 
 #### 2. Kết quả trích xuất đặc trưng & Dự báo mô hình thực nghiệm
@@ -50,8 +51,8 @@ Quá trình kiểm thử được thực hiện trực tiếp trên môi trườ
 
 ---
 
-### III. TỔNG KẾT BÀN GIAO CP4
+### III. TỔNG KẾT BÀN GIAO & PHẠM VI NHÁNH
 1. Toàn bộ 4 Tabs đã được tích hợp hoàn chỉnh và đồng bộ trong [`app/main.py`](file:///c:/Users/Laptop/ADY201m-main/app/main.py).
 2. Hệ thống đã triển khai thành công lên Streamlit Community Cloud và đang chạy online 24/7.
-3. Đã có đầy đủ bằng chứng thực nghiệm bằng hình ảnh chụp từ Cloud: **Xử lý trọn vẹn 330.0 giây, Latency = 6.11s, RAM đỉnh = ~542.9 MB**.
-4. Toàn bộ mã nguồn và báo cáo nghiệm thu đã được lưu trữ và đồng bộ tại branch `feature/cp4-member4-deployment`.
+3. Đã có đầy đủ bằng chứng thực nghiệm bằng hình ảnh chụp từ Cloud hiển thị rõ thanh Telemetry: **Xử lý trọn vẹn 330.0 giây, DSP Latency = 6.11s, Traced Memory Peak = ~542.9 MB**.
+4. Toàn bộ mã nguồn và báo cáo nghiệm thu đã được lưu trữ và đồng bộ tại commit `f5b0e4b` trên nhánh `feature/cp4-member4-deployment`. Sẵn sàng để tạo PR merge vào nhánh `main` chính của repository theo đúng quy trình phân nhánh của nhóm.
