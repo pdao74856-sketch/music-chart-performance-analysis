@@ -19,3 +19,6 @@ streamlit==1.67.0
 
 # Interactive Visualizations for Tab 1 Showcase (Radar Chart)
 plotly==5.24.1
+
+# Cloud Data Pipeline & Supabase SDK
+supabase==2.31.0
