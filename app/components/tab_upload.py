@@ -44,6 +44,9 @@ except ImportError:
                 return fn
             return decorator
 
+        def __getattr__(self, name: str):
+            return lambda *args, **kwargs: None
+
     st = _MockStreamlit()  # type: ignore
 
 # ── Root path resolution ────────────────────────────────────────────────────
@@ -52,7 +55,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 # ── Constants ───────────────────────────────────────────────────────────────
 MAX_FILE_SIZE_MB = 15
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-SUPPORTED_FORMATS = ["mp3", "wav", "flac", "ogg"]
+SUPPORTED_FORMATS = ["mp3", "wav", "flac", "ogg", "m4a"]
 
 MARKET_LABELS = {"VN": "🇻🇳 Việt Nam", "US": "🇺🇸 Hoa Kỳ", "KR": "🇰🇷 Hàn Quốc"}
 MARKET_CODES = {"🇻🇳 Việt Nam": "VN", "🇺🇸 Hoa Kỳ": "US", "🇰🇷 Hàn Quốc": "KR"}
@@ -301,7 +304,7 @@ def _render_prediction_result(pred: Dict[str, float], market_label: str) -> None
     elif ensemble >= -11.93:
         tier, tier_color, tier_emoji = "Khoảng Dưới Trung Vị (Tiềm năng trung bình - Tier 3)", "info", "📊"
     else:
-        tier, tier_color, tier_emoji = "Đáy Phân Phối (Cần tối ưu mạnh phối khí - Tier 4)", "secondary", "📉"
+        tier, tier_color, tier_emoji = "Đáy Phân Phối (Cần tối ưu mạnh phối khí - Tier 4)", "error", "📉"
 
     st.subheader("🎯 Kết Quả Dự Đoán Song Hành (Dual-Model)")
 
@@ -369,17 +372,12 @@ def render() -> None:
         )
 
         st.subheader("🌏 Thị trường đánh giá")
-        if "tab3_market_label" not in st.session_state:
-            st.session_state["tab3_market_label"] = "🇻🇳 Việt Nam"
-
         market_label = st.selectbox(
             "Chọn thị trường mục tiêu",
             options=list(MARKET_CODES.keys()),
-            index=list(MARKET_CODES.keys()).index(st.session_state["tab3_market_label"]),
             key="tab3_market_select",
             help="Thị trường quyết định vector dummy, hệ số độ dốc tương tác và bộ trung vị ca từ.",
         )
-        st.session_state["tab3_market_label"] = market_label
         market_code = MARKET_CODES[market_label]
 
         with st.expander("ℹ️ Tiêu chuẩn Kỹ thuật Phân hệ", expanded=False):
@@ -426,6 +424,9 @@ def render() -> None:
                 )
 
         st.success(f"✅ Đã nạp tệp thành công: **{uploaded.name}** ({file_size_mb:.2f} MB)")
+        audio_ext = uploaded.name.split(".")[-1].lower() if "." in uploaded.name else "mp3"
+        audio_mime = "audio/mp4" if audio_ext == "m4a" else f"audio/{audio_ext}"
+        st.audio(file_bytes, format=audio_mime)
 
         file_sha = _sha256(file_bytes)
         cache_key = f"tab3_features_{file_sha}"
@@ -452,8 +453,13 @@ def render() -> None:
 
         duration = features.get("duration_analyzed_seconds", 0)
         key_name = features.get("key", "N/A")
+        if est_duration is not None and est_duration > 360.0:
+            duration_desc = f"**{duration:.1f} giây** (trích đoạn 6 phút đầu từ tệp gốc {est_duration:.1f}s)"
+        else:
+            duration_desc = f"**{duration:.1f} giây**"
+
         st.caption(
-            f"⏱️ Thời lượng giải mã: **{duration:.1f} giây** | "
+            f"⏱️ Thời lượng giải mã: {duration_desc} | "
             f"🎼 Điệu tính ước lượng: **{key_name}** {'Major 🎵' if float(features.get('mode', 1)) >= 0.5 else 'Minor 🎶'}"
         )
 
