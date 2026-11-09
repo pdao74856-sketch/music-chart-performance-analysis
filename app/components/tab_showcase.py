@@ -109,84 +109,83 @@ SHOWCASE_SPECIFICATIONS = [
     {
         "spotify_track_id": "2HRgqmZQC0MC7GeNuDIXHN",
         "market": "VN",
-        "highlight": "Quán quân toàn cầu, năng lượng cao, độ lớn vượt trội",
+        "highlight": "Điểm BXH cao nhất nhóm VN (99.2 điểm, Tier 1); Độ lớn vượt trội (-12.79 dBFS), Độ sáng phổ cao (2,686 Hz)",
     },
     {
         "spotify_track_id": "5ydjxBSUIDn26MFzU3asP4",
         "market": "VN",
-        "highlight": "R&B/Pop trữ tình, tempo chậm rãi, độ lớn êm dịu đặc trưng",
+        "highlight": "Điểm trên trung vị (29.7 điểm, Tier 2); Tốc độ nhịp 143.6 BPM, Âm lượng êm dịu (-14.03 dBFS)",
     },
     {
         "spotify_track_id": "3Nn9QjxOEj1pleW9xTG6cq",
         "market": "VN",
-        "highlight": "Ballad/Pop hiện đại, hòa âm ấm áp đặc trưng V-Pop",
+        "highlight": "Điểm trên trung vị (17.7 điểm, Tier 2); Mật độ nốt dày (242.3 onsets/min), Năng lượng cao (0.293)",
     },
     {
         "spotify_track_id": "3yWacnoBnM0lrzLmXAk44d",
         "market": "VN",
-        "highlight": "Ballad truyền thống, tempo chậm rãi, tập trung ca từ",
+        "highlight": "Điểm dưới trung vị (-11.0 điểm, Tier 3); Tempo chậm rãi (86.1 BPM), Mật độ nốt thấp nhất mẫu VN (110.1 onsets/min)",
     },
     {
         "spotify_track_id": "5Ss7wCp22FOAbfeg75KllJ",
         "market": "VN",
-        "highlight": "Trụ hạng ngắn hạn, năng lượng âm học tối giản",
+        "highlight": "Điểm đáy BXH (-88.0 điểm, Tier 4); Độ sáng phổ thấp nhất toàn bộ 15 bài mẫu (797 Hz)",
     },
 
     # --- UNITED STATES (US) ---
     {
         "spotify_track_id": "2tzgSUZOUKopYbRqQOVT8X",
         "market": "US",
-        "highlight": "Trap/Hip-Hop hiện đại, bass dày, onset rate cao",
+        "highlight": "Điểm đỉnh BXH US (82.0 điểm, Tier 1); Mật độ nốt (293.7 onsets/min) và Năng lượng (0.434) cao nhất toàn bộ 15 bài mẫu",
     },
     {
         "spotify_track_id": "3aQem4jVGdhtg116TmJnHz",
         "market": "US",
-        "highlight": "Hiphop năng lượng vừa phải, beat tối giản, nhịp điệu dứt khoát",
+        "highlight": "Điểm trên trung vị (25.0 điểm, Tier 2); Tần suất đổi hợp âm cao nhất toàn bộ 15 bài mẫu (85.1 changes/min)",
     },
     {
         "spotify_track_id": "7KA4W4McWYRpgf0fWsJZWB",
         "market": "US",
-        "highlight": "Neo-Soul/R&B retro, độ sáng phổ hài hòa",
+        "highlight": "Điểm trên trung vị (22.1 điểm, Tier 2); Âm lượng nhỏ nhất mẫu (-15.84 dBFS), Năng lượng tối giản (0.161)",
     },
     {
         "spotify_track_id": "200x8ONbPfFzByUr3fVz46",
         "market": "US",
-        "highlight": "Country-Pop mộc mạc, tốc độ đổi hợp âm ổn định",
+        "highlight": "Điểm dưới trung vị (2.4 điểm, Tier 3); Độ sáng phổ hài hòa (2,522 Hz), Tempo 136.0 BPM",
     },
     {
         "spotify_track_id": "2J051fjLklkoPbzOoTAACZ",
         "market": "US",
-        "highlight": "Pop-Rock năng lượng cao nhưng thiếu yếu tố lan tỏa",
+        "highlight": "Điểm đáy BXH (-94.0 điểm, Tier 4); Mật độ nốt cao (232.6 onsets/min) nhưng không bám trụ được BXH",
     },
 
     # --- SOUTH KOREA (KR) ---
     {
         "spotify_track_id": "0AQEShePVSsxMTM6a8ik6t",
         "market": "KR",
-        "highlight": "K-HipHop sôi động, nhịp độ dồn dập, độ phủ sóng lớn",
+        "highlight": "Điểm đỉnh BXH KR (96.0 điểm, Tier 1); Năng lượng cao (0.323), Độ lớn nổi bật (-9.83 dBFS)",
     },
     {
         "spotify_track_id": "1jRYyE9MEg7nxUgWEtsqFp",
         "market": "KR",
-        "highlight": "K-R&B trữ tình, độ lớn tiết chế, giai điệu lôi cuốn",
+        "highlight": "Điểm trên trung vị (36.7 điểm, Tier 2); Tempo thư thái (112.3 BPM), Chuyển hợp âm ổn định (45.2 changes/min)",
     },
     {
         "spotify_track_id": "3khEEPRyBeOUabbmOPJzAG",
         "market": "KR",
-        "highlight": "J-Rock/Anime crossover, chuyển hợp âm dồn dập",
+        "highlight": "Điểm trên trung vị (19.6 điểm, Tier 2); Năng lượng âm học cao (0.289), Trọng tâm phổ 2,425 Hz",
     },
     {
         "spotify_track_id": "6G3myAs4HemIdtLYhhjGLP",
         "market": "KR",
-        "highlight": "Pop Soul mượt mà, tempo thư thái, giọng hát nổi bật",
+        "highlight": "Điểm tiệm cận 0 (0.0 điểm, Tier 3); Tempo nhanh nhất 15 bài (161.5 BPM), Chuyển hợp âm dồn dập (72.4 changes/min)",
     },
     {
         "spotify_track_id": "3LEgGAl9zLcQWGTp7ptqtQ",
         "market": "KR",
-        "highlight": "EDM/Dance pop, cấu trúc chuẩn mực nhưng thứ hạng thấp",
+        "highlight": "Điểm đáy BXH (-94.0 điểm, Tier 4); Độ sáng phổ cao nhất 15 bài (2,835 Hz) nhưng điểm BXH thấp",
     },
 ]
-
 
 def classify_chart_tier(score: float) -> Tuple[str, str]:
     """Phân loại thứ hạng thành tích bài hát dựa trên phân vị thực nghiệm."""
@@ -632,21 +631,27 @@ def render() -> None:
     # 7. Nhận Định Kinh Tế Lượng Học Thuật (Academic & Econometric Note)
     st.markdown("---")
     st.markdown("### 🎓 Nhận Định Kinh Tế Lượng & Tính Bất Định Của Ca Khúc Hit")
-    st.info(
+    ols_min = float(showcase_df["pred_ols_m3"].min())
+    ols_max = float(showcase_df["pred_ols_m3"].max())
+    rf_min = float(showcase_df["pred_rf"].min())
+    rf_max = float(showcase_df["pred_rf"].max())
+
+    econometric_markdown = (
         r"📌 **Bối cảnh phương sai giải thích ($R^2_{\text{OOS}} \approx 3.4\% - 6.9\%$):**"
         "\n\n"
-        r"1. **Hiện tượng Co cụm về Trung vị (Shrinkage to Mean):** Điểm dự đoán của cả OLS (khoảng $-3$ đến $+13$) "
-        r"và Random Forest (khoảng $+8$ đến $+21$) đều hội tụ quanh trung vị mẫu ($15.16$). Điều này phản ánh bản chất thống kê lành mạnh: "
+        f"1. **Hiện tượng Co cụm về Trung vị (Shrinkage to Mean):** Điểm dự đoán của cả OLS (khoảng ${ols_min:+.1f}$ đến ${ols_max:+.1f}$) "
+        f"và Random Forest (khoảng ${rf_min:+.1f}$ đến ${rf_max:+.1f}$) trên 15 bài mẫu đều hội tụ quanh trung vị mẫu ($15.16$). Điều này phản ánh bản chất thống kê lành mạnh: "
         r"khi một tập đặc trưng chỉ giải thích một phần phương sai ($R^2_{\text{OOS, OLS}}=0.0340$, $R^2_{\text{OOS, RF}}=0.0686$), các mô hình tối ưu không được phép 'dự đoán cực đoan' "
         "để tránh bùng nổ sai số bình phương.\n\n"
-        r"2. **Bản chất của các siêu Hit (Superstar Effect):** Đối với các ca khúc Tier 1 đạt điểm cực đại ($\ge 80$), "
-        r"khoảng cách sai số lớn giữa dự đoán (~$10-20$) và thực tế ($80-99$) minh chứng cho quy luật kinh tế học âm nhạc: "
-        "*Đặc trưng âm học và ca từ cấu thành điều kiện cần (chất lượng sản phẩm), nhưng danh tiếng nghệ sĩ, chiến dịch truyền thông viral trên TikTok/Reels "
-        "và thuật toán đề xuất của Spotify mới là động lực quyết định đưa bài hát trở thành siêu hit toàn cầu.*\n\n"
+        r"2. **Khoảng cách tại nhóm ca khúc đỉnh cao (Superstar Effect):** Đối với các ca khúc Tier 1 đạt điểm cực đại ($\ge 80$), "
+        r"khoảng cách sai số lớn giữa dự đoán (~$10-20$) và thực tế ($80-99$) phản ánh giới hạn của các đặc trưng nội tại bài hát: "
+        r"*các yếu tố ngoài mô hình (như danh tiếng tích lũy của nghệ sĩ, chiến dịch truyền thông, mức độ viral mạng xã hội, vị trí trên các playlist đề xuất...) "
+        r"không được đo lường trực tiếp trong dữ liệu và có thể liên quan mật thiết đến phần lớn phương sai chưa được giải thích ($1 - R^2 \approx 93\% - 96\%).*\n\n"
         r"3. **Kiểm định Paired Cluster Bootstrap ($\Delta\text{MAE} = +0.6505$, $95\%$ CI $[-0.8057, +2.0268]$):** "
-        "Do khoảng tin cậy 95% của chênh lệch sai số tuyệt đối chứa giá trị 0, sự vượt trội của Random Forest so với OLS Model 3 "
-        "chưa đạt ý nghĩa thống kê ở mức $\alpha = 0.05$ trên toàn bộ 3 thị trường, khẳng định mối quan hệ giữa đặc trưng âm học và thành tích BXH mang tính chất tương quan biên (marginal association) hơn là các mẫu hình phi tuyến tính phức tạp."
+        r"Do khoảng tin cậy 95% của chênh lệch sai số tuyệt đối chứa giá trị 0, sự vượt trội của Random Forest so với OLS Model 3 "
+        r"chưa đạt ý nghĩa thống kê ở mức $\\alpha = 0.05$ trên toàn bộ 3 thị trường, khẳng định mối quan hệ giữa đặc trưng âm học và thành tích BXH mang tính chất tương quan biên (marginal association) hơn là các mẫu hình phi tuyến tính phức tạp."
     )
+    st.info(econometric_markdown)
 
     # 8. Bảng Tổng Hợp Toàn Bộ 15 Bài Mẫu
     with st.expander("📋 Xem Danh Sách Tổng Hợp Toàn Bộ 15 Ca Khúc Showcase", expanded=False):
