@@ -473,26 +473,41 @@ def render_tab_diagnostics():
         if "r2" in rf_ov and rf_ov["r2"] is not None:
             r2_rf_val = f"{float(rf_ov['r2']):.3f}"
 
-    def _ci_has_zero(val: Any) -> bool:
+    def _ci_has_zero(val: Any) -> Optional[bool]:
+        """
+        Ternary logic:
+        - True: CI có đủ 2 cận hợp lệ và bao hàm 0.
+        - False: CI có đủ 2 cận hợp lệ và KHÔNG bao hàm 0.
+        - None: Thiếu dữ liệu, null, hoặc không thể trích xuất đúng 2 cận.
+        """
         if pd.isna(val) or val is None:
-            return False
+            return None
         import re
         nums = [float(x) for x in re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", str(val))]
-        return len(nums) == 2 and (nums[0] <= 0.0 <= nums[1])
+        if len(nums) != 2:
+            return None
+        return nums[0] <= 0.0 <= nums[1]
 
-    ols_r2_all_zero = True
-    if df_comp is not None:
+    if df_comp is None:
+        ols_ci_clause = "chưa có dữ liệu so sánh ngoài mẫu để đánh giá khoảng tin cậy của R²"
+    else:
         sub_ov = df_comp[df_comp["sample"] == "Overall"]
-        for _, r_ols in sub_ov.iterrows():
-            if not _ci_has_zero(r_ols.get("r2_ci_95")):
-                ols_r2_all_zero = False
-
-    ols_ci_clause = "CI 95% R² của các mô hình OLS đều chứa 0 (RF không có CI trong bảng này)" if ols_r2_all_zero else "khoảng tin cậy 95% của R² bao hàm 0"
+        r2_cis = [_ci_has_zero(r_ols.get("r2_ci_95")) for _, r_ols in sub_ov.iterrows()]
+        if not r2_cis or any(c is None for c in r2_cis):
+            ols_ci_clause = "chưa đủ cơ sở dữ liệu xác định tính bao hàm 0 của khoảng tin cậy R²"
+        elif all(c is True for c in r2_cis):
+            ols_ci_clause = "CI 95% R² của các mô hình OLS đều chứa 0 (RF không có CI trong bảng này)"
+        else:
+            ols_ci_clause = "khoảng tin cậy 95% của R² không đồng nhất bao hàm 0"
 
     # 2) Mục 3: Nested & RF vs OLS CI checks (hoàn toàn tự động tổng hợp từ dữ liệu)
-    non_zero_nested = []
-    zero_nested = []
-    if df_nested is not None:
+    if df_nested is None or df_rf_ols is None:
+        comp_summary_text = "Chưa đủ cơ sở dữ liệu để so sánh ghép cặp giữa các bậc mô hình."
+    else:
+        non_zero_nested = []
+        zero_nested = []
+        has_missing_data = False
+
         sub_nest = df_nested[df_nested["sample"] == "Overall"]
         pair_short_names = {
             ("Model 2 (Audio + Lyrics)", "Model 1 (Audio Baseline)"): "M1→M2",
@@ -501,44 +516,61 @@ def render_tab_diagnostics():
         }
         for m_name, b_name in target_pairs:
             match_row = sub_nest[(sub_nest["model"] == m_name) & (sub_nest["baseline"] == b_name)]
-            if not match_row.empty:
-                nr = match_row.iloc[0]
-                m_zero = _ci_has_zero(nr.get("delta_mae_ci_95"))
-                r_zero = _ci_has_zero(nr.get("delta_r2_ci_95"))
-                p_label = pair_short_names.get((m_name, b_name), f"{b_name}→{m_name}")
-                if (not m_zero) or (not r_zero):
-                    non_zero_nested.append(p_label)
-                else:
-                    zero_nested.append(p_label)
+            if match_row.empty:
+                has_missing_data = True
+                continue
+            nr = match_row.iloc[0]
+            m_zero = _ci_has_zero(nr.get("delta_mae_ci_95"))
+            r_zero = _ci_has_zero(nr.get("delta_r2_ci_95"))
+            if m_zero is None or r_zero is None:
+                has_missing_data = True
+                continue
+            p_label = pair_short_names.get((m_name, b_name), f"{b_name}→{m_name}")
+            if (m_zero is False) or (r_zero is False):
+                non_zero_nested.append(p_label)
+            elif (m_zero is True) and (r_zero is True):
+                zero_nested.append(p_label)
 
-    rf_zero_scopes = []
-    rf_non_zero_scopes = []
-    if df_rf_ols is not None:
+        rf_zero_scopes = []
+        rf_non_zero_scopes = []
         for _, r_rf in df_rf_ols.iterrows():
-            sc = str(r_rf["scope"])
-            r2_z = float(r_rf["delta_r2_ci_lower"]) <= 0.0 <= float(r_rf["delta_r2_ci_upper"])
-            mae_z = float(r_rf["delta_mae_ci_lower"]) <= 0.0 <= float(r_rf["delta_mae_ci_upper"])
+            sc = str(r_rf.get("scope", ""))
+            r2_l = r_rf.get("delta_r2_ci_lower")
+            r2_u = r_rf.get("delta_r2_ci_upper")
+            mae_l = r_rf.get("delta_mae_ci_lower")
+            mae_u = r_rf.get("delta_mae_ci_upper")
+            if any(pd.isna(x) or x is None for x in [r2_l, r2_u, mae_l, mae_u]):
+                has_missing_data = True
+                continue
+            try:
+                r2_z = float(r2_l) <= 0.0 <= float(r2_u)
+                mae_z = float(mae_l) <= 0.0 <= float(mae_u)
+            except (ValueError, TypeError):
+                has_missing_data = True
+                continue
             if r2_z and mae_z:
                 rf_zero_scopes.append(sc)
             else:
                 rf_non_zero_scopes.append(sc)
 
-    if non_zero_nested and not rf_non_zero_scopes:
-        comp_summary_text = (
-            f"Trong các bước nested, chỉ {' và '.join(non_zero_nested)} có CI ΔMAE/ΔR² không chứa 0 "
-            f"(sát biên, chưa hiệu chỉnh đa so sánh); các bước còn lại ({', '.join(zero_nested)}) "
-            f"và RF vs OLS ({', '.join(rf_zero_scopes)}) đều có CI chứa 0."
-        )
-    elif not non_zero_nested and not rf_non_zero_scopes:
-        comp_summary_text = (
-            f"Toàn bộ các bước so sánh lồng nhau ({', '.join(zero_nested)}) và đối chuẩn RF vs OLS ({', '.join(rf_zero_scopes)}) "
-            "đều có khoảng tin cậy 95% bao hàm giá trị 0."
-        )
-    else:
-        comp_summary_text = (
-            f"Các so sánh có khoảng tin cậy không chứa 0 gồm: {', '.join(non_zero_nested + rf_non_zero_scopes)}; "
-            f"các so sánh còn lại đều có khoảng tin cậy chứa 0."
-        )
+        if has_missing_data:
+            comp_summary_text = "Dữ liệu kiểm định bootstrap lồng nhau hoặc đối chuẩn RF chưa đầy đủ để đưa ra kết luận toàn diện."
+        elif non_zero_nested and not rf_non_zero_scopes:
+            comp_summary_text = (
+                f"Trong các bước nested, chỉ {' và '.join(non_zero_nested)} có CI ΔMAE/ΔR² không chứa 0 "
+                f"(sát biên, chưa hiệu chỉnh đa so sánh); các bước còn lại ({', '.join(zero_nested)}) "
+                f"và RF vs OLS ({', '.join(rf_zero_scopes)}) đều có CI chứa 0."
+            )
+        elif not non_zero_nested and not rf_non_zero_scopes:
+            comp_summary_text = (
+                f"Toàn bộ các bước so sánh lồng nhau ({', '.join(zero_nested)}) và đối chuẩn RF vs OLS ({', '.join(rf_zero_scopes)}) "
+                "đều có khoảng tin cậy 95% bao hàm giá trị 0."
+            )
+        else:
+            comp_summary_text = (
+                f"Các so sánh có khoảng tin cậy không chứa 0 gồm: {', '.join(non_zero_nested + rf_non_zero_scopes)}; "
+                f"các so sánh còn lại đều có khoảng tin cậy chứa 0."
+            )
 
     # 3) Mục 5: Ramsey RESET p-values
     reset_info = load_reset_test()
