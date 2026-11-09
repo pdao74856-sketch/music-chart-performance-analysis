@@ -40,6 +40,8 @@ from app.components.tab_upload import (
     _predict_dual_models,
     FEATURE_META,
     FEATURE_GROUPS,
+    SUPPORTED_FORMATS,
+    render,
 )
 
 
@@ -233,6 +235,17 @@ class TestTabUploadHeadless:
         bad_dur, bad_err = _inspect_audio_duration(b"not an audio stream")
         assert bad_dur is None
         assert bad_err is not None
+
+    def test_09_supported_formats_and_headless_render(self):
+        """Verify SUPPORTED_FORMATS includes m4a and render() executes safely headlessly."""
+        assert "m4a" in SUPPORTED_FORMATS, "SUPPORTED_FORMATS must support m4a"
+        assert "mp3" in SUPPORTED_FORMATS
+        assert "wav" in SUPPORTED_FORMATS
+        assert "flac" in SUPPORTED_FORMATS
+        assert "ogg" in SUPPORTED_FORMATS
+
+        # Verify headless execution without active upload
+        render()
 
 
 if __name__ == "__main__":

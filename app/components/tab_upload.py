@@ -35,6 +35,16 @@ import pandas as pd
 try:
     import streamlit as st
 except ImportError:
+    class _MockStreamlitContext:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def __getattr__(self, name: str):
+            return lambda *args, **kwargs: _MockStreamlitContext()
+
     class _MockStreamlit:
         session_state: Dict[str, Any] = {}
 
@@ -43,6 +53,16 @@ except ImportError:
             def decorator(fn):
                 return fn
             return decorator
+
+        def columns(self, spec, *args, **kwargs):
+            n = len(spec) if isinstance(spec, (list, tuple)) else int(spec)
+            return [_MockStreamlitContext() for _ in range(n)]
+
+        def expander(self, *args, **kwargs):
+            return _MockStreamlitContext()
+
+        def selectbox(self, label, options, *args, **kwargs):
+            return options[0] if options else None
 
         def __getattr__(self, name: str):
             return lambda *args, **kwargs: None
@@ -378,7 +398,7 @@ def render() -> None:
             key="tab3_market_select",
             help="Thị trường quyết định vector dummy, hệ số độ dốc tương tác và bộ trung vị ca từ.",
         )
-        market_code = MARKET_CODES[market_label]
+        market_code = MARKET_CODES.get(market_label, "VN")
 
         with st.expander("ℹ️ Tiêu chuẩn Kỹ thuật Phân hệ", expanded=False):
             st.markdown(
