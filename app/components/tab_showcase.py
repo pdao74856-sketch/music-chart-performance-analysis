@@ -245,10 +245,18 @@ def load_showcase_dataset() -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]
     # 1. Load clean features (Supabase first, fallback local cache)
     clean_df = load_clean_modeling_data(source="auto")
 
-    # 2. Load out-of-sample predictions
+    # 2. Load out-of-sample predictions and validate test IDs
     if not TEST_PREDICTIONS_PATH.exists():
         raise FileNotFoundError(f"Missing required predictions file: {TEST_PREDICTIONS_PATH}")
     preds_df = pd.read_csv(TEST_PREDICTIONS_PATH)
+
+    if TEST_TRACK_IDS_PATH.exists():
+        with open(TEST_TRACK_IDS_PATH, "r", encoding="utf-8") as f_ids:
+            test_ids_data = json.load(f_ids)
+            valid_test_set = set(test_ids_data.get("track_ids", []))
+            for s in SHOWCASE_SPECIFICATIONS:
+                if s["spotify_track_id"] not in valid_test_set:
+                    raise ValueError(f"Showcase track {s['spotify_track_id']} not in test split!")
 
     # 3. Merge predictions with clean acoustic features
     feature_cols = [
@@ -411,7 +419,7 @@ def create_radar_chart(
             angularaxis=dict(
                 direction="clockwise",
                 rotation=90,
-                tickfont=dict(size=11, color="#1E293B"),
+                tickfont=dict(size=11, color="#64748B"),
                 gridcolor="rgba(148, 163, 184, 0.25)",
             ),
             bgcolor="rgba(0, 0, 0, 0)",
@@ -425,7 +433,7 @@ def create_radar_chart(
             x=0.5,
             font=dict(size=11),
         ),
-        margin=dict(l=40, r=40, t=30, b=50),
+        margin=dict(l=40, r=40, t=30, b=70),
         height=450,
         paper_bgcolor="rgba(0,0,0,0)",
     )
@@ -583,7 +591,7 @@ def render() -> None:
             value=f"{pred_ols:.1f} điểm",
             delta=f"{err_ols:+.1f} pts (Sai số OLS)",
             delta_color="off",
-            help="Mô hình Hồi quy Tuyến tính Đa biến có tương tác thị trường (R²_OOS = 0.034 / 3.40%, R²_Train = 0.066 / 6.56%, Wald kiểm định tương tác: χ²(10) = 17.91, p = 0.057).",
+            help="Mô hình Hồi quy Tuyến tính Đa biến có tương tác thị trường (R²_OOS = 0.0340 / 3.40%, R²_Train = 0.066 / 6.56%, Wald kiểm định tương tác: χ²(10) = 17.91, p = 0.057).",
         )
 
         # Ô 3: Dự đoán Random Forest Model 4
@@ -601,9 +609,9 @@ def render() -> None:
         if abs(diff_err) < 0.5:
             st.info("⚖️ **Đánh giá:** Cả OLS Model 3 và Random Forest Model 4 đều cho độ chính xác tương đương trên ca khúc này.")
         elif diff_err < 0:
-            st.success(f"🎯 **Đánh giá:** OLS Model 3 dự đoán sát thực tế hơn ({abs_ols:.1f} so với {abs_rf:.1f} của RF, chênh lệch {abs(diff_err):.1f} điểm).")
+            st.success(f"🎯 **Đánh giá:** OLS Model 3 dự đoán sát thực tế hơn (sai số tuyệt đối {abs_ols:.1f} pts so với {abs_rf:.1f} pts của RF, chênh lệch {abs(diff_err):.1f} điểm).")
         else:
-            st.success(f"🌲 **Đánh giá:** Random Forest Model 4 dự đoán sát thực tế hơn ({abs_rf:.1f} so với {abs_ols:.1f} của OLS, chênh lệch {abs(diff_err):.1f} điểm).")
+            st.success(f"🌲 **Đánh giá:** Random Forest Model 4 dự đoán sát thực tế hơn (sai số tuyệt đối {abs_rf:.1f} pts so với {abs_ols:.1f} pts của OLS, chênh lệch {abs(diff_err):.1f} điểm).")
 
     # 6. Bảng Chi Tiết 6 Thông Số Âm Học Đo Lường
     with st.expander("🔍 Xem Bảng Đo Lường Chi Tiết 6 Chiều Âm Học & Thang Đo Chuẩn Hóa", expanded=False):
