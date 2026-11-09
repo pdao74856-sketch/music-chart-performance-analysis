@@ -180,3 +180,23 @@ def test_audio_extractor_safeguard_corrupt_file():
 
     with pytest.raises(ValueError, match=r"(?i)(không thể giải mã|failed to decode)"):
         extract_features_for_inference(corrupt_bytes, filename="corrupt.wav")
+
+
+def test_extract_features_stereo_audio():
+    """Verify that 2-channel stereo audio is properly converted to 1D mono without collapsing time."""
+    sr = 22050
+    duration_sec = 4.0
+    t = np.linspace(0, duration_sec, int(sr * duration_sec), endpoint=False, dtype=np.float32)
+    # 2 channels with slightly different frequencies
+    sig_left = 0.5 * np.sin(2 * np.pi * 440.0 * t)
+    sig_right = 0.5 * np.sin(2 * np.pi * 554.37 * t)
+    stereo_signal = np.stack([sig_left, sig_right], axis=1)
+
+    buf = io.BytesIO()
+    sf.write(buf, stereo_signal, sr, format="WAV")
+    stereo_bytes = buf.getvalue()
+
+    result = extract_features_for_inference(stereo_bytes, filename="stereo_test.wav")
+    assert result["duration_analyzed_seconds"] == pytest.approx(duration_sec, abs=0.5)
+    assert result["energy"] > 0.0
+    assert len([k for k in result if k not in EXPECTED_METADATA_KEYS]) == 17

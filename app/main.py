@@ -19,6 +19,7 @@ from src.utils.supabase_client import get_supabase_credentials
 
 from app.components.tab_diagnostics import render_tab_diagnostics
 from app.components.tab_simulator import render as render_tab_simulator
+from app.components.tab_upload import render as render_tab_upload
 
 # Page Configuration
 st.set_page_config(
@@ -90,8 +91,7 @@ with tabs[1]:
     render_tab_simulator()
 
 with tabs[2]:
-    st.header("🎙️ Tải Lên Âm Thanh & Trích Xuất Librosa Thời Gian Thực")
-    st.info("🚧 **Đang ở giai đoạn hoàn thiện Checkpoint 2.** Phân hệ này sẽ được **Member 2** tích hợp và hoàn thiện tại **Checkpoint 3** (Tải lên file MP3/WAV, trích xuất 17 đặc trưng Librosa với caching @st.cache_data và rào chắn an toàn).")
+    render_tab_upload()
 
 with tabs[3]:
     render_tab_diagnostics()
