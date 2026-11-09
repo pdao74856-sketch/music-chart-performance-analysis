@@ -27,6 +27,7 @@ Quá trình kiểm thử được thực hiện trực tiếp trên môi trườ
 #### 1. Bằng chứng thực nghiệm tệp kiểm thử lớn (`test_track_long_5m30s.wav`)
 
 - **Tên tệp:** `test_track_long_5m30s.wav` (Dung lượng: **13.88 MB**).
+  > *Xuất xứ & Đặc tính âm học:* Tệp âm thanh kiểm thử được tạo từ bài hát tổng hợp phối khí thể loại Ballad/Acoustic (A Major, nhịp 129.2 BPM). Chỉ số trọng tâm phổ (Spectral Centroid) đạt mức thấp đặc trưng **637 Hz** do bài hát tập trung chủ yếu vào dải âm trầm - trung (bassline, piano mộc và giọng vocal ấm áp), hầu như không xuất hiện các nhạc cụ gõ dải tần cao (hi-hats, synthesizer chói gắt), qua đó phản ánh hoàn toàn chuẩn xác và trung thực bản chất vật lý của sóng âm học.
 - **Thời lượng giải mã thực tế (Duration Analyzed):** **330.0 giây (5 phút 30 giây)** — Xử lý 100% toàn bài, không cắt ngắn.
 - **Số lượng mẫu âm thanh DSP:** $N = 330 \times 22,050 = \mathbf{7,276,500}$ điểm mẫu ($14,211$ STFT frames).
 - **Độ trễ xử lý DSP thực tế (DSP Extraction Latency):** **`6.11 giây`** (Đo bằng `time.perf_counter()` bao bọc trực tiếp khối trích xuất Librosa với try/finally).

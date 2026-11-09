@@ -510,7 +510,7 @@ def render() -> None:
 
         lat = features.get("_dsp_latency_sec", 0.0)
         ram = features.get("_dsp_peak_ram_mb", 0.0)
-        telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s** | 💾 RAM đỉnh: **~{ram:.1f} MB**" if lat > 0 else ""
+        telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s** | 💾 RAM đỉnh DSP (tracemalloc): **~{ram:.1f} MB**" if lat > 0 else ""
 
         st.caption(
             f"⏱️ Thời lượng giải mã: {duration_desc} | "

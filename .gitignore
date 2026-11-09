@@ -16,6 +16,8 @@ models/*.joblib
 # Raw audio files (ignored due to size limits)
 data/raw/audio/*.wav
 data/raw/audio/*.mp3
+data/test_audio/*.wav
+data/test_audio/*.mp3
 
 # Local data caches and large CSVs
 data/processed/*.csv
