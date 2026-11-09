@@ -168,17 +168,21 @@ def _extract_cached(file_sha256: str, _audio_bytes: bytes) -> Tuple[Dict[str, An
     (features_dict, error_message)
         error_message rỗng nếu thành công.
     """
-    try:
-        import time
-        import tracemalloc
-        from src.features.audio_extractor import extract_features_for_inference  # type: ignore
+    import time
+    import tracemalloc
+    from src.features.audio_extractor import extract_features_for_inference  # type: ignore
 
+    was_tracing = tracemalloc.is_tracing()
+    if not was_tracing:
         tracemalloc.start()
-        t0 = time.perf_counter()
+    else:
+        tracemalloc.reset_peak()
+
+    t0 = time.perf_counter()
+    try:
         features = extract_features_for_inference(BytesIO(_audio_bytes))
         t1 = time.perf_counter()
         _, peak_b = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
 
         features["_dsp_latency_sec"] = float(t1 - t0)
         features["_dsp_peak_ram_mb"] = float(peak_b / (1024 * 1024))
@@ -187,6 +191,9 @@ def _extract_cached(file_sha256: str, _audio_bytes: bytes) -> Tuple[Dict[str, An
         return {}, str(exc)
     except Exception as exc:  # noqa: BLE001
         return {}, f"Lỗi không mong đợi khi trích xuất âm thanh: {exc}"
+    finally:
+        if not was_tracing and tracemalloc.is_tracing():
+            tracemalloc.stop()
 
 
 @st.cache_data(show_spinner=False)
