@@ -333,11 +333,13 @@ def _render_prediction_result(pred: Dict[str, float], market_label: str) -> None
 
     st.caption(
         "📌 **Lưu ý phương pháp luận & Giới hạn:**\n"
+        "- **Phân tầng tương đối (Relative Benchmark):** Các ngưỡng $Q_1, \\text{Median}, Q_3$ được tính toán trên phân phối điểm thực tế của 2,098 ca khúc. "
+        "Do điểm dự báo tổ hợp (Ensemble) có xu hướng co cụm về trung vị (*Shrinkage to Mean*), việc phân tầng mang tính chất **so sánh tương đối về cấu trúc âm học**, "
+        "không phải dự báo chắc chắn về thứ hạng thực tế trên thị trường.\n"
         "- **Fallback Ca từ:** Vì bài hát tải lên chưa có lời, hệ thống đã nạp **trung vị 6 biến ca từ của thị trường** "
         f"({market_label}) từ tệp `data/processed/lyrics_market_medians.json` (do TV3 bàn giao trên tập Train n=1,685).\n"
         "- **Năng lực giải thích:** Mô hình OLS Model 3 giải thích khoảng 3.4% – 6.6% biến thiên "
-        "($R^2_{\\text{test}} = 3.40\\%$, $R^2_{\\text{train}} = 6.56\\%$), trong khi Random Forest Model 4 đạt $R^2_{\\text{test}} \\approx 6.86\\%$ toàn cầu "
-        "(đặc biệt ghi nhận tín hiệu phi tuyến đạt $13.35\\%$ tại riêng thị trường Việt Nam). "
+        "($R^2_{\\text{test}} = 3.40\\%$, $R^2_{\\text{train}} = 6.56\\%$), trong khi Random Forest Model 4 đạt $R^2_{\\text{test}} \\approx 6.86\\%$ toàn cục "
         "Điểm số phản ánh khuynh hướng âm học khách quan, không thể đo lường các yếu tố ngoại sinh (marketing, playlisting, hiệu ứng viral)."
     )
 
@@ -384,7 +386,7 @@ def render() -> None:
             st.markdown(
                 f"""
                 - **Giới hạn an toàn:** Tối đa {MAX_FILE_SIZE_MB} MB, giải mã tối đa 360 giây (6 phút).
-                - **Librosa DSP Engine:** Trích xuất 17 đặc trưng số thô (RAM đỉnh < 280 MB, ~9.6s).
+                - **Librosa DSP Engine:** Trích xuất 17 đặc trưng âm thanh số (DSP) thời gian thực, tự động giải phóng bộ đệm sau xử lý.
                 - **Audio Contract v2:** OLS chỉ dùng 14 biến liên tục + mode (cấm `loudness_proxy` và `spectral_bandwidth`).
                 - **Fallback Ca từ:** Đồng bộ trung vị thị trường từ `lyrics_market_medians.json` (TV3).
                 - **Hiệu năng:** Caching `@st.cache_data` qua mã băm SHA-256 nội dung file.
