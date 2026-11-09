@@ -169,8 +169,19 @@ def _extract_cached(file_sha256: str, _audio_bytes: bytes) -> Tuple[Dict[str, An
         error_message rỗng nếu thành công.
     """
     try:
+        import time
+        import tracemalloc
         from src.features.audio_extractor import extract_features_for_inference  # type: ignore
+
+        tracemalloc.start()
+        t0 = time.perf_counter()
         features = extract_features_for_inference(BytesIO(_audio_bytes))
+        t1 = time.perf_counter()
+        _, peak_b = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        features["_dsp_latency_sec"] = float(t1 - t0)
+        features["_dsp_peak_ram_mb"] = float(peak_b / (1024 * 1024))
         return features, ""
     except ValueError as exc:
         return {}, str(exc)
@@ -490,9 +501,14 @@ def render() -> None:
         else:
             duration_desc = f"**{duration:.1f} giây**"
 
+        lat = features.get("_dsp_latency_sec", 0.0)
+        ram = features.get("_dsp_peak_ram_mb", 0.0)
+        telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s** | 💾 RAM đỉnh: **~{ram:.1f} MB**" if lat > 0 else ""
+
         st.caption(
             f"⏱️ Thời lượng giải mã: {duration_desc} | "
             f"🎼 Điệu tính ước lượng: **{key_name}** {'Major 🎵' if float(features.get('mode', 1)) >= 0.5 else 'Minor 🎶'}"
+            f"{telemetry}"
         )
 
         st.subheader("📊 Tiêu Điểm Âm Học")
