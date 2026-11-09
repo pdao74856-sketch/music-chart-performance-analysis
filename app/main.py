@@ -18,6 +18,7 @@ if str(ROOT_DIR) not in sys.path:
 from src.utils.supabase_client import get_supabase_credentials
 
 from app.components.tab_diagnostics import render_tab_diagnostics
+from app.components.tab_showcase import render as render_tab_showcase
 from app.components.tab_simulator import render as render_tab_simulator
 from app.components.tab_upload import render as render_tab_upload
 
@@ -60,7 +61,7 @@ st.markdown(
 with st.sidebar:
     st.image("https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80", use_container_width=True)
     st.title("Thông Tin Dự Án")
-    st.markdown("**Học phần:** ADY201m — Applied Data Analytics")
+    st.markdown("**Học phần:** ADY201m — AI, Data Science with Python & SQL")
     st.markdown("**Đề tài:** Multimodal Hit Song Analysis")
     st.markdown("**Quy mô mẫu:** 2,098 bản ghi phân tích sạch (1,912 bài hát độc bản qua 23 quý)")
 
@@ -84,8 +85,7 @@ tabs = st.tabs([
 ])
 
 with tabs[0]:
-    st.header("🎵 Thư Viện Bài Hát Tiêu Biểu & Radar Chart Âm Học")
-    st.info("🚧 **Đang ở giai đoạn hoàn thiện Checkpoint 2.** Phân hệ này sẽ được **Member 2** tích hợp và hoàn thiện tại **Checkpoint 3** (Showcase 15 bài mẫu Test Set & Radar Chart đa chiều).")
+    render_tab_showcase()
 
 with tabs[1]:
     render_tab_simulator()
