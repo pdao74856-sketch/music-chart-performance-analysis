@@ -19,6 +19,7 @@ from src.utils.supabase_client import get_supabase_credentials
 
 from app.components.tab_diagnostics import render_tab_diagnostics
 from app.components.tab_simulator import render as render_tab_simulator
+from app.components.tab_upload import render as render_tab_upload
 
 # Page Configuration
 st.set_page_config(
@@ -90,12 +91,7 @@ with tabs[1]:
     render_tab_simulator()
 
 with tabs[2]:
-    try:
-        from app.components.tab_upload import render as _render_tab_upload
-        _render_tab_upload()
-    except ImportError as _e:
-        st.header("🎙️ Tải Lên Âm Thanh & Trích Xuất Librosa Thời Gian Thực")
-        st.error(f"⚠️ Không thể nạp Tab Upload: {_e}")
+    render_tab_upload()
 
 with tabs[3]:
     render_tab_diagnostics()

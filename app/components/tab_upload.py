@@ -258,21 +258,27 @@ def _predict_dual_models(payload: Dict[str, Any]) -> Tuple[Optional[Dict[str, fl
 
 # ── UI Helpers ───────────────────────────────────────────────────────────────
 
-def _fmt_feature(key: str, val: Any) -> str:
-    """Format giá trị đặc trưng kèm đơn vị chuẩn xác."""
+def _fmt_feature_val(key: str, val: Any) -> str:
+    """Format giá trị số thuần túy của đặc trưng (không kèm đơn vị)."""
     if key == "mode":
         return "Major 🎵" if float(val) >= 0.5 else "Minor 🎶"
     meta = FEATURE_META.get(key, {})
     fmt = meta.get("fmt", ".4f")
-    unit = meta.get("unit", "")
     if fmt:
         try:
-            text = f"{float(val):{fmt}}"
+            return f"{float(val):{fmt}}"
         except (ValueError, TypeError):
-            text = str(val)
-    else:
-        text = str(val)
-    return f"{text} {unit}".strip()
+            return str(val)
+    return str(val)
+
+
+def _fmt_feature(key: str, val: Any) -> str:
+    """Format giá trị đặc trưng kèm đơn vị chuẩn xác."""
+    val_str = _fmt_feature_val(key, val)
+    if key == "mode":
+        return val_str
+    unit = FEATURE_META.get(key, {}).get("unit", "")
+    return f"{val_str} {unit}".strip()
 
 
 def _render_feature_table(features: Dict[str, Any]) -> None:
@@ -287,7 +293,7 @@ def _render_feature_table(features: Dict[str, Any]) -> None:
                     continue
                 rows.append({
                     "Đặc trưng": meta.get("label", k),
-                    "Giá trị": _fmt_feature(k, val),
+                    "Giá trị": _fmt_feature_val(k, val),
                     "Đơn vị": meta.get("unit", ""),
                 })
             if rows:
@@ -301,7 +307,10 @@ def _render_highlight_metrics(features: Dict[str, Any]) -> None:
     col1.metric("🎵 Tempo", f"{features.get('tempo', 0):.1f} BPM")
     col2.metric("⚡ Energy (RMS²)", f"{features.get('energy', 0):.4f}")
     col3.metric("📡 Spectral Centroid", f"{features.get('spectral_centroid', 0):.0f} Hz")
-    col4.metric("🎹 Giọng (Mode)", "Major 🎵" if float(features.get("mode", 1)) >= 0.5 else "Minor 🎶")
+    key_root = features.get("key", "")
+    mode_name = "Major 🎵" if float(features.get("mode", 1)) >= 0.5 else "Minor 🎶"
+    full_key = f"{key_root} {mode_name}".strip() if key_root else mode_name
+    col4.metric("🎹 Điệu tính & Giọng", full_key)
 
 
 def _render_prediction_result(pred: Dict[str, float], market_label: str) -> None:
@@ -331,18 +340,18 @@ def _render_prediction_result(pred: Dict[str, float], market_label: str) -> None
     c1, c2, c3 = st.columns(3)
     c1.metric(
         "📈 Hồi quy Tuyến tính OLS (Model 3)",
-        f"{ols_score:.1f} / 100",
-        help="Mô hình chuẩn kinh tế lượng: giải thích ảnh hưởng biên và tương tác thị trường.",
+        f"{ols_score:.1f} điểm",
+        help="Mô hình chuẩn kinh tế lượng: giải thích ảnh hưởng biên và tương tác thị trường (Thang điểm chuẩn hóa [-99, +100]).",
     )
     c2.metric(
         "🌲 Rừng Ngẫu Nhiên (Model 4 RF)",
-        f"{rf_score:.1f} / 100",
-        help="Mô hình phi tuyến phi tham số: đo lường cấu trúc tương tác phi tuyến tính.",
+        f"{rf_score:.1f} điểm",
+        help="Mô hình phi tuyến phi tham số: đo lường cấu trúc tương tác phi tuyến tính (Thang điểm chuẩn hóa [-99, +100]).",
     )
     c3.metric(
         "⚖️ Điểm Tổ Hợp (Ensemble)",
-        f"{ensemble:.1f} / 100",
-        help="Điểm bình quân trọng số 50-50 giữa OLS và Random Forest.",
+        f"{ensemble:.1f} điểm",
+        help="Điểm bình quân trọng số 50-50 giữa OLS và Random Forest (Thang điểm chuẩn hóa [-99, +100]).",
     )
 
     if tier_color == "success":
@@ -362,8 +371,8 @@ def _render_prediction_result(pred: Dict[str, float], market_label: str) -> None
         "- **Fallback Ca từ:** Vì bài hát tải lên chưa có lời, hệ thống đã nạp **trung vị 6 biến ca từ của thị trường** "
         f"({market_label}) từ tệp `data/processed/lyrics_market_medians.json` (do TV3 bàn giao trên tập Train n=1,685).\n"
         "- **Năng lực giải thích:** Mô hình OLS Model 3 giải thích khoảng 3.4% – 6.6% biến thiên "
-        "($R^2_{\\text{test}} = 3.40\\%$, $R^2_{\\text{train}} = 6.56\\%$), trong khi Random Forest Model 4 đạt $R^2_{\\text{test}} \\approx 6.86\\%$ toàn cục "
-        "Điểm số phản ánh khuynh hướng âm học khách quan, không thể đo lường các yếu tố ngoại sinh (marketing, playlisting, hiệu ứng viral)."
+        "($R^2_{\\text{test}} = 3.40\\%$, $R^2_{\\text{train}} = 6.56\\%$), trong khi Random Forest Model 4 đạt $R^2_{\\text{test}} \\approx 6.86\\%$ toàn cục.\n"
+        "- **Khuyến nghị sử dụng:** Điểm số phản ánh khuynh hướng âm học khách quan, không thể đo lường các yếu tố ngoại sinh (marketing, playlisting, hiệu ứng viral)."
     )
 
 
