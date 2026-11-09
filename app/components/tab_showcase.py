@@ -591,7 +591,7 @@ def render() -> None:
             value=f"{pred_ols:.1f} điểm",
             delta=f"{err_ols:+.1f} pts (Sai số OLS)",
             delta_color="off",
-            help="Mô hình Hồi quy Tuyến tính Đa biến có tương tác thị trường (R²_OOS = 0.0340 / 3.40%, R²_Train = 0.066 / 6.56%, Wald kiểm định tương tác: χ²(10) = 17.91, p = 0.057).",
+            help="Mô hình Hồi quy Tuyến tính Đa biến có tương tác thị trường (R²_OOS = 0.0340 / 3.40%, R²_Train = 0.0656 / 6.56%, Wald kiểm định tương tác: χ²(10) = 17.91, p = 0.057).",
         )
 
         # Ô 3: Dự đoán Random Forest Model 4
@@ -657,7 +657,7 @@ def render() -> None:
         r"không được đo lường trực tiếp trong dữ liệu và có thể liên quan mật thiết đến phần lớn phương sai chưa được giải thích ($1 - R^2 \approx 93\% - 96\%).*\n\n"
         r"3. **Kiểm định Paired Cluster Bootstrap ($\Delta\text{MAE} = +0.6505$, $95\%$ CI $[-0.8057, +2.0268]$):** "
         r"Do khoảng tin cậy 95% của chênh lệch sai số tuyệt đối chứa giá trị 0, sự vượt trội của Random Forest so với OLS Model 3 "
-        r"chưa đạt ý nghĩa thống kê ở mức $\\alpha = 0.05$ trên toàn bộ 3 thị trường, khẳng định mối quan hệ giữa đặc trưng âm học và thành tích BXH mang tính chất tương quan biên (marginal association) hơn là các mẫu hình phi tuyến tính phức tạp."
+        r"chưa đạt ý nghĩa thống kê ở mức $\alpha = 0.05$ trên toàn bộ 3 thị trường, khẳng định mối quan hệ giữa đặc trưng âm học và thành tích BXH mang tính chất tương quan biên (marginal association) hơn là các mẫu hình phi tuyến tính phức tạp."
     )
     st.info(econometric_markdown)
 
