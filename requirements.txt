@@ -1,4 +1,4 @@
-# Python 3.13.7; models/mlr_pipeline.pkl và scaler.pkl được train với bộ này
+# Offline training: Python 3.13 (mlr_pipeline.pkl & scaler.pkl) | Cloud Deployment Runtime: Python 3.12.16 (compatible with scipy==1.18.1 & librosa==1.0.0)
 pandas==3.0.3
 numpy==2.4.2
 scikit-learn==1.9.1
@@ -19,3 +19,6 @@ streamlit==1.67.0
 
 # Interactive Visualizations for Tab 1 Showcase (Radar Chart)
 plotly==5.24.1
+
+# Cloud Data Pipeline & Supabase SDK
+supabase==2.31.0

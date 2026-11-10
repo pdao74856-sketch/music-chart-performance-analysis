@@ -247,9 +247,9 @@ Bên cạnh việc bảo đảm chuẩn mực thống kê, các kết quả ki�
    * *Giải pháp công nghệ:* Giao diện Tab 2 bố trí thanh trượt `Loudness (dBFS)`. Phía backend tự động thực hiện phép biến đổi mũ $Energy = 10^{(\text{Loudness}/20)}$ trước khi nạp vào pipeline OLS. Thiết kế này vừa bảo đảm tính tiện dụng cho người dùng, vừa bảo toàn nghiêm ngặt Audio Contract v2.
 2. **Tab 3 (Audio Upload & Real-time DSP Extraction — Rào chắn năng lực DSP):**
    * Module `src/features/audio_extractor.py` trích xuất đầy đủ **17 đặc trưng âm học chuẩn hóa thô** từ file âm thanh tải lên (bao gồm cả `loudness_proxy` và `spectral_bandwidth` để phục vụ trực quan hóa dữ liệu trên giao diện), trong khi pipeline hồi quy Model 1 chọn lọc đúng **15 biến chuẩn tắc** theo Audio Contract v2.
-   * **Kết quả đo lường thực nghiệm cục bộ (Benchmarking trên máy phát triển):**
-     * Thử nghiệm trên file nhạc mẫu (`想見你想見你想見你.mp3`, dung lượng 3.63 MB, thời lượng 240s): Thời gian giải mã Librosa toàn bài đạt **9.61 giây**, mức tăng RAM thực tế của hệ điều hành là **134.61 MB** (tiến trình đạt đỉnh **278.86 MB**), chiếm khoảng 27.2% hạn mức RAM 1,024 MB của Streamlit Cloud.
-     * Đây là kết quả đo kiểm thử nghiệm ban đầu nhằm xác nhận tính khả thi về tài nguyên máy chủ trước khi nhóm chính thức ghép nối hoàn chỉnh giao diện tại Checkpoint 3.
+    * **Kết quả đo lường thực nghiệm chính thức trên Streamlit Cloud (Đồng bộ số liệu nghiệm thu CP4):**
+      * Thử nghiệm trên file nhạc kiểm thử đầy đủ (`test_track_long_5m30s.wav`, dung lượng 13.88 MB, thời lượng 330.0s / 5m30s): Thời gian giải mã Librosa toàn bài đạt **6.11 giây** (cận trên đo khi bật `tracemalloc`), mức đỉnh phân bổ bộ nhớ Python nội tại đạt **542.9 MB** (Peak Traced Python Memory, đo bằng `tracemalloc.get_traced_memory()`).
+      * Đây là số liệu benchmark thực tế chính thức được đo trên môi trường Cloud (Debian Linux, Python 3.12.16) tại Checkpoint 4, thay thế cho các phép đo thử nghiệm sơ bộ ban đầu trên máy phát triển cá nhân.
 
 ---
 

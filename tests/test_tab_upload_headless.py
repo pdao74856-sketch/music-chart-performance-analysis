@@ -119,7 +119,10 @@ class TestTabUploadHeadless:
         # Extracting identical hash retrieves cached results
         f1, _ = _extract_cached(h1, b1)
         f2, _ = _extract_cached(h2, b2)
-        assert f1 == f2, "Cache hit must return identical feature dictionary"
+        # So sánh các đặc trưng âm học vật lý, bỏ qua telemetry đo động
+        f1_clean = {k: v for k, v in f1.items() if not k.startswith("_")}
+        f2_clean = {k: v for k, v in f2.items() if not k.startswith("_")}
+        assert f1_clean == f2_clean, "Cache hit must return identical acoustic feature dictionary"
 
     def test_03_lyrics_medians_loading(self):
         """Test loading official lyrics medians from TV3 (data/processed/lyrics_market_medians.json)."""

@@ -168,14 +168,32 @@ def _extract_cached(file_sha256: str, _audio_bytes: bytes) -> Tuple[Dict[str, An
     (features_dict, error_message)
         error_message rỗng nếu thành công.
     """
+    import time
+    import tracemalloc
+    from src.features.audio_extractor import extract_features_for_inference  # type: ignore
+
+    was_tracing = tracemalloc.is_tracing()
+    if not was_tracing:
+        tracemalloc.start()
+    else:
+        tracemalloc.reset_peak()
+
+    t0 = time.perf_counter()
     try:
-        from src.features.audio_extractor import extract_features_for_inference  # type: ignore
         features = extract_features_for_inference(BytesIO(_audio_bytes))
+        t1 = time.perf_counter()
+        _, peak_b = tracemalloc.get_traced_memory()
+
+        features["_dsp_latency_sec"] = float(t1 - t0)
+        features["_dsp_peak_ram_mb"] = float(peak_b / (1024 * 1024))
         return features, ""
     except ValueError as exc:
         return {}, str(exc)
     except Exception as exc:  # noqa: BLE001
         return {}, f"Lỗi không mong đợi khi trích xuất âm thanh: {exc}"
+    finally:
+        if not was_tracing and tracemalloc.is_tracing():
+            tracemalloc.stop()
 
 
 @st.cache_data(show_spinner=False)
@@ -490,9 +508,14 @@ def render() -> None:
         else:
             duration_desc = f"**{duration:.1f} giây**"
 
+        lat = features.get("_dsp_latency_sec", 0.0)
+        ram = features.get("_dsp_peak_ram_mb", 0.0)
+        telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s** | 💾 RAM đỉnh DSP (tracemalloc): **~{ram:.1f} MB**" if lat > 0 else ""
+
         st.caption(
             f"⏱️ Thời lượng giải mã: {duration_desc} | "
             f"🎼 Điệu tính ước lượng: **{key_name}** {'Major 🎵' if float(features.get('mode', 1)) >= 0.5 else 'Minor 🎶'}"
+            f"{telemetry}"
         )
 
         st.subheader("📊 Tiêu Điểm Âm Học")
