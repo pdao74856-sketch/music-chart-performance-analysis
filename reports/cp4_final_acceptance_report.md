@@ -27,10 +27,11 @@ Quá trình kiểm thử được thực hiện trực tiếp trên môi trườ
 #### 1. Bằng chứng thực nghiệm tệp kiểm thử lớn (`test_track_long_5m30s.wav`)
 
 - **Tên tệp:** `test_track_long_5m30s.wav` (Dung lượng: **13.88 MB**).
-  > *Xuất xứ & Đặc tính âm học:* Tệp âm thanh kiểm thử được tạo từ bài hát tổng hợp phối khí thể loại Ballad/Acoustic (A Major, nhịp 129.2 BPM). Chỉ số trọng tâm phổ (Spectral Centroid) đạt mức thấp đặc trưng **637 Hz** do bài hát tập trung chủ yếu vào dải âm trầm - trung (bassline, piano mộc và giọng vocal ấm áp), hầu như không xuất hiện các nhạc cụ gõ dải tần cao (hi-hats, synthesizer chói gắt), qua đó phản ánh hoàn toàn chuẩn xác và trung thực bản chất vật lý của sóng âm học.
+  > *Xuất xứ & Đặc tính âm học:* Tệp âm thanh kiểm thử được tạo từ bài hát tổng hợp mô phỏng phong cách Ballad/Acoustic (A Major, nhịp 129.2 BPM). Chỉ số trọng tâm phổ (Spectral Centroid) đạt mức **637 Hz** do đây là tệp tổng hợp thiên nhiều về dải tần số trầm - trung (bassline và piano mộc), ít các nhạc cụ bộ gõ tần số cao, do đó chỉ số này mang tính chất minh họa đặc tính phân bổ năng lượng tần số của tệp thử nghiệm.
 - **Thời lượng giải mã thực tế (Duration Analyzed):** **330.0 giây (5 phút 30 giây)** — Xử lý 100% toàn bài, không cắt ngắn.
 - **Số lượng mẫu âm thanh DSP:** $N = 330 \times 22,050 = \mathbf{7,276,500}$ điểm mẫu ($14,211$ STFT frames).
-- **Độ trễ xử lý DSP thực tế (DSP Extraction Latency):** **`6.11 giây`** (Đo bằng `time.perf_counter()` bao bọc trực tiếp khối trích xuất Librosa với try/finally).
+- **Độ trễ xử lý DSP thực tế (DSP Extraction Latency):** **`6.11 giây`** (Đo bằng `time.perf_counter()` khi đang bật `tracemalloc`).
+  > *Lưu ý về độ trễ:* Vì `tracemalloc` can thiệp và theo dõi từng lượt cấp phát bộ nhớ của Python nên làm tăng overhead CPU; con số 6.11s này đóng vai trò là **cận trên (upper bound)** của thời gian xử lý, chứng minh hệ thống xử lý trọn vẹn tệp 330 giây trong khoảng 6 giây ngay cả trong điều kiện profiling khắt khe nhất.
 - **Mức tiêu thụ bộ nhớ Python đỉnh (Peak Traced Python Memory):** **`~542.9 MB`** (Đo bằng `tracemalloc.get_traced_memory()`).
   > *Lưu ý phương pháp luận kỹ thuật:* `tracemalloc` chỉ đo lường đỉnh phân bổ bộ nhớ của các đối tượng do trình thông dịch Python theo dõi (mảng sóng âm NumPy, ma trận spectrogram STFT và ma trận khoảng cách RQA) trong suốt quá trình chạy hàm trích xuất. `tracemalloc` **không** đo lường tổng bộ nhớ tiến trình (Resident Set Size - RSS), không bao gồm runtime của C/C++ libraries, hệ điều hành hoặc toàn bộ container. Do đó, con số 542.9 MB phản ánh chi phí bộ nhớ nội tại của thuật toán DSP Python và không đại diện cho tổng mức chiếm dụng RAM của container máy chủ.
 - **Tính ổn định quan sát được:** Trong suốt quá trình upload, giải mã và hiển thị, ứng dụng không gặp hiện tượng restart hoặc crash giao diện; trình phát `st.audio` phát toàn bộ tệp 5m30s bình thường.
@@ -45,11 +46,12 @@ Quá trình kiểm thử được thực hiện trực tiếp trên môi trườ
   - Loudness Proxy: **-13.65 dBFS**
   - Điệu tính ước lượng: **A Major 🎵** (Độ tin cậy 0.8448)
   - Cấu trúc lặp: Chroma DET = **0.1807**, MFCC DET = **0.2153**, Longest Pattern = **13.0 s**
-- **Kết quả dự báo Dual-Model tại thị trường Việt Nam (VN):**
+- **Kết quả dự báo Dual-Model tại thị trường Việt Nam (VN) — Minh họa Pipeline Inference:**
   - Hồi quy Tuyến tính OLS (Model 3): **21.9 điểm**
   - Rừng Ngẫu Nhiên RF (Model 4): **3.7 điểm**
   - Điểm Tổ Hợp Ensemble: **12.8 điểm**
   - Phân tầng thị trường: **Khoảng Dưới Trung Vị (Tier 3)**.
+  > *Diễn giải học thuật khi báo cáo:* Điểm số trên xuất phát từ một tệp âm thanh tổng hợp thử nghiệm kỹ thuật và mang tính chất **demo quy trình suy luận (inference pipeline)**, không đại diện cho dự báo một ca khúc thương mại thực tế. Sự chênh lệch giữa OLS (21.9) và Random Forest (3.7) phản ánh trực quan sự khác biệt cơ chế của hai kiến trúc khi ngoại suy trên tệp thử nghiệm; điều này hoàn toàn nhất quán với kết luận phân tích ở Tab 4 rằng Random Forest chưa tạo ra sự vượt trội có ý nghĩa thống kê so với OLS trên dữ liệu bài toán.
 
 ---
 
