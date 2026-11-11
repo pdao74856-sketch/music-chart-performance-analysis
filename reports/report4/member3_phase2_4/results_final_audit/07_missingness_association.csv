@@ -1,0 +1,15 @@
+analysis_type,observational_unit,market,missing_status,observed,expected,market_total,missing_percent,chi_square,df,p_raw,min_expected,coefficient_log_odds,odds_ratio,coefficient_p,clusters,converged,fit_iterations,robust_covariance_finite,market_contrast_covariance_rank,covariance,working_correlation
+primary independent Pearson,track,VN,not_missing,460.0,448.24325874928286,488,5.737704918032787,35.862072997633945,2,1.6317356188015173e-08,39.756741250717155,,,,,,,,,,
+primary independent Pearson,track,VN,missing,28.0,39.756741250717155,488,5.737704918032787,35.862072997633945,2,1.6317356188015173e-08,39.756741250717155,,,,,,,,,,
+primary independent Pearson,track,US,not_missing,629.0,662.2610441767068,721,12.76005547850208,35.862072997633945,2,1.6317356188015173e-08,39.756741250717155,,,,,,,,,,
+primary independent Pearson,track,US,missing,92.0,58.738955823293175,721,12.76005547850208,35.862072997633945,2,1.6317356188015173e-08,39.756741250717155,,,,,,,,,,
+primary independent Pearson,track,KR,not_missing,512.0,490.4956970740103,534,4.119850187265917,35.862072997633945,2,1.6317356188015173e-08,39.756741250717155,,,,,,,,,,
+primary independent Pearson,track,KR,missing,22.0,43.50430292598967,534,4.119850187265917,35.862072997633945,2,1.6317356188015173e-08,39.756741250717155,,,,,,,,,,
+diagnostic only; repeated tracks,track-market row,VN,not_missing,575.0,563.0810295519542,608,5.427631578947369,39.68624268013953,2,2.41124809906491e-09,44.918970448045755,,,,,,,,,,
+diagnostic only; repeated tracks,track-market row,VN,missing,33.0,44.918970448045755,608,5.427631578947369,39.68624268013953,2,2.41124809906491e-09,44.918970448045755,,,,,,,,,,
+diagnostic only; repeated tracks,track-market row,US,not_missing,702.0,738.1177311725453,797,11.91969887076537,39.68624268013953,2,2.41124809906491e-09,44.918970448045755,,,,,,,,,,
+diagnostic only; repeated tracks,track-market row,US,missing,95.0,58.882268827454716,797,11.91969887076537,39.68624268013953,2,2.41124809906491e-09,44.918970448045755,,,,,,,,,,
+diagnostic only; repeated tracks,track-market row,KR,not_missing,666.0,641.8012392755005,693,3.896103896103896,39.68624268013953,2,2.41124809906491e-09,44.918970448045755,,,,,,,,,,
+diagnostic only; repeated tracks,track-market row,KR,missing,27.0,51.19876072449952,693,3.896103896103896,39.68624268013953,2,2.41124809906491e-09,44.918970448045755,,,,,,,,,,
+sensitivity; cluster-aware logistic GEE,track-market row; cluster=spotify_track_id,"C(market, Treatment(reference='US'))[T.VN]",market coefficient vs US,,,2098,,36.03463942397957,2,1.496847203806411e-08,,-0.8578059669056005,0.4240915331807778,3.23279428160412e-05,1912.0,True,2.0,True,2.0,robust sandwich,independence
+sensitivity; cluster-aware logistic GEE,track-market row; cluster=spotify_track_id,"C(market, Treatment(reference='US'))[T.KR]",market coefficient vs US,,,2098,,36.03463942397957,2,1.496847203806411e-08,,-1.2053962921107881,0.2995732574679948,4.638622529878561e-08,1912.0,True,2.0,True,2.0,robust sandwich,independence

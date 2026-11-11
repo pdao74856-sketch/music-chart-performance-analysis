@@ -1,0 +1,962 @@
+{
+  "run_utc": "2026-11-08T18:43:04.480564+00:00",
+  "git_branch": "feature/member3-cp3-simulator",
+  "git_commit": "a4b4815479631757a2c7e3ac3be1d6e3f98ab36f",
+  "git_status_at_log_capture": "?? reports/report4/member3_phase2_4.zip\n?? reports/report4/member3_phase2_4/",
+  "python_packages": {
+    "python": "3.14.6",
+    "pandas": "3.0.3",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "statsmodels": "0.15.0"
+  },
+  "input_paths_and_sha256": {
+    "cache": {
+      "path": "data\\processed\\modeling_dataset_clean_cache.csv",
+      "sha256": "16e8119c679373e45626d3282dcac673bae4579ba7f8b64330295d33a4f2837c"
+    },
+    "features": {
+      "path": "reports\\report3\\lyrics_features_extracted.csv",
+      "sha256": "727a4b8fb4a0030b173ce094eb005bb80efed1a145ad7fbd1e35f2c882dbace7"
+    },
+    "provenance": {
+      "path": "data\\raw\\lyrics_collection_results.json",
+      "sha256": "878c43c8baf81734dae644c77daf455061f4d6e0414c3aa148edb7cf381ceb7b"
+    },
+    "historical_mode": {
+      "path": "reports\\report4\\chart_data\\member2\\fig3_tonal_harmony_market.csv",
+      "sha256": "68f24dbf5a9562446cae8fa90f212935aa16b0c395ea1eb334816b43637281a4"
+    },
+    "historical_rows": {
+      "path": "reports\\report4\\chart_data\\member2\\audio_features_eda_source.csv",
+      "sha256": "6a88350e0c530514930e56f9dbd115f23e9491ecf8fb0afb649cc1d42c3727ee"
+    }
+  },
+  "canonical_logical_fingerprint": "bb0aea6d42049da728c8339bbf92388991825d9128cb85122df081e71a0a6e81",
+  "counts": {
+    "market_rows": 2098,
+    "unique_tracks": 1912,
+    "exclusive_tracks": 1743,
+    "expanded_pairs": 2098
+  },
+  "warnings": [],
+  "limitations": [
+    "Exclusive-track inference applies only to songs appearing in exactly one market and may be affected by selection bias.",
+    "Zero-fill chorus sensitivity assumes unidentifiable chorus counts equal zero; it is not primary.",
+    "GEE and Kruskal-Wallis target different estimands.",
+    "Historical Report 4 p=0.42 is not reproduced; v4.1 source/method remains unidentified.",
+    "Project requirements specify SciPy 1.18.1; run environment SciPy version is recorded and no package was installed."
+  ],
+  "validations": [
+    {
+      "name": "canonical fingerprint",
+      "passed": true,
+      "detail": "bb0aea6d42049da728c8339bbf92388991825d9128cb85122df081e71a0a6e81"
+    },
+    {
+      "name": "canonical market rows",
+      "passed": true,
+      "detail": "2098"
+    },
+    {
+      "name": "canonical unique tracks",
+      "passed": true,
+      "detail": "1912"
+    },
+    {
+      "name": "canonical pair uniqueness",
+      "passed": true,
+      "detail": "0"
+    },
+    {
+      "name": "expanded rows",
+      "passed": true,
+      "detail": "2098"
+    },
+    {
+      "name": "exclusive tracks",
+      "passed": true,
+      "detail": "1743"
+    },
+    {
+      "name": "no duplicate expanded pairs",
+      "passed": true,
+      "detail": "0"
+    },
+    {
+      "name": "KW word_count n_vn",
+      "passed": true,
+      "detail": "actual=487; expected=487"
+    },
+    {
+      "name": "KW word_count n_us",
+      "passed": true,
+      "detail": "actual=721; expected=721"
+    },
+    {
+      "name": "KW word_count n_kr",
+      "passed": true,
+      "detail": "actual=532; expected=532"
+    },
+    {
+      "name": "KW word_count H",
+      "passed": true,
+      "detail": "actual=269.884707835; expected=269.884707835"
+    },
+    {
+      "name": "KW word_count p_raw",
+      "passed": true,
+      "detail": "actual=2.48473637929e-59; expected=2.48473637929e-59"
+    },
+    {
+      "name": "KW word_count p_holm",
+      "passed": true,
+      "detail": "actual=1.24236818964e-58; expected=1.24236818964e-58"
+    },
+    {
+      "name": "KW word_count epsilon_squared",
+      "passed": true,
+      "detail": "actual=0.154222629727; expected=0.15422263"
+    },
+    {
+      "name": "KW unique_word_count n_vn",
+      "passed": true,
+      "detail": "actual=487; expected=487"
+    },
+    {
+      "name": "KW unique_word_count n_us",
+      "passed": true,
+      "detail": "actual=721; expected=721"
+    },
+    {
+      "name": "KW unique_word_count n_kr",
+      "passed": true,
+      "detail": "actual=532; expected=532"
+    },
+    {
+      "name": "KW unique_word_count H",
+      "passed": true,
+      "detail": "actual=135.783969165; expected=135.783969165"
+    },
+    {
+      "name": "KW unique_word_count p_raw",
+      "passed": true,
+      "detail": "actual=3.27254577789e-30; expected=3.27254577789e-30"
+    },
+    {
+      "name": "KW unique_word_count p_holm",
+      "passed": true,
+      "detail": "actual=6.54509155577e-30; expected=6.54509155577e-30"
+    },
+    {
+      "name": "KW unique_word_count epsilon_squared",
+      "passed": true,
+      "detail": "actual=0.0770201319314; expected=0.07702013"
+    },
+    {
+      "name": "KW lexical_diversity n_vn",
+      "passed": true,
+      "detail": "actual=487; expected=487"
+    },
+    {
+      "name": "KW lexical_diversity n_us",
+      "passed": true,
+      "detail": "actual=721; expected=721"
+    },
+    {
+      "name": "KW lexical_diversity n_kr",
+      "passed": true,
+      "detail": "actual=532; expected=532"
+    },
+    {
+      "name": "KW lexical_diversity H",
+      "passed": true,
+      "detail": "actual=147.713946188; expected=147.713946188"
+    },
+    {
+      "name": "KW lexical_diversity p_raw",
+      "passed": true,
+      "detail": "actual=8.40086750217e-33; expected=8.40086750217e-33"
+    },
+    {
+      "name": "KW lexical_diversity p_holm",
+      "passed": true,
+      "detail": "actual=3.36034700087e-32; expected=3.36034700087e-32"
+    },
+    {
+      "name": "KW lexical_diversity epsilon_squared",
+      "passed": true,
+      "detail": "actual=0.0838882822041; expected=0.08388828"
+    },
+    {
+      "name": "KW repetition_ratio n_vn",
+      "passed": true,
+      "detail": "actual=487; expected=487"
+    },
+    {
+      "name": "KW repetition_ratio n_us",
+      "passed": true,
+      "detail": "actual=721; expected=721"
+    },
+    {
+      "name": "KW repetition_ratio n_kr",
+      "passed": true,
+      "detail": "actual=532; expected=532"
+    },
+    {
+      "name": "KW repetition_ratio H",
+      "passed": true,
+      "detail": "actual=147.713946188; expected=147.713946188"
+    },
+    {
+      "name": "KW repetition_ratio p_raw",
+      "passed": true,
+      "detail": "actual=8.40086750217e-33; expected=8.40086750217e-33"
+    },
+    {
+      "name": "KW repetition_ratio p_holm",
+      "passed": true,
+      "detail": "actual=3.36034700087e-32; expected=3.36034700087e-32"
+    },
+    {
+      "name": "KW repetition_ratio epsilon_squared",
+      "passed": true,
+      "detail": "actual=0.0838882822041; expected=0.08388828"
+    },
+    {
+      "name": "KW avg_word_length n_vn",
+      "passed": true,
+      "detail": "actual=487; expected=487"
+    },
+    {
+      "name": "KW avg_word_length n_us",
+      "passed": true,
+      "detail": "actual=721; expected=721"
+    },
+    {
+      "name": "KW avg_word_length n_kr",
+      "passed": true,
+      "detail": "actual=532; expected=532"
+    },
+    {
+      "name": "KW avg_word_length H",
+      "passed": true,
+      "detail": "actual=557.065993992; expected=557.065993993"
+    },
+    {
+      "name": "KW avg_word_length p_raw",
+      "passed": true,
+      "detail": "actual=1.08306962632e-121; expected=1.08306962632e-121"
+    },
+    {
+      "name": "KW avg_word_length p_holm",
+      "passed": true,
+      "detail": "actual=6.49841775789e-121; expected=6.49841775789e-121"
+    },
+    {
+      "name": "KW avg_word_length epsilon_squared",
+      "passed": true,
+      "detail": "actual=0.319554400686; expected=0.3195544"
+    },
+    {
+      "name": "KW chorus_repetition_count n_vn",
+      "passed": true,
+      "detail": "actual=460; expected=460"
+    },
+    {
+      "name": "KW chorus_repetition_count n_us",
+      "passed": true,
+      "detail": "actual=629; expected=629"
+    },
+    {
+      "name": "KW chorus_repetition_count n_kr",
+      "passed": true,
+      "detail": "actual=512; expected=512"
+    },
+    {
+      "name": "KW chorus_repetition_count H",
+      "passed": true,
+      "detail": "actual=2.36812234603; expected=2.368122346"
+    },
+    {
+      "name": "KW chorus_repetition_count p_raw",
+      "passed": true,
+      "detail": "actual=0.306033357046; expected=0.306033357"
+    },
+    {
+      "name": "KW chorus_repetition_count p_holm",
+      "passed": true,
+      "detail": "actual=0.306033357046; expected=0.306033357"
+    },
+    {
+      "name": "KW chorus_repetition_count epsilon_squared",
+      "passed": true,
+      "detail": "actual=0.000230364421797; expected=0.00023036"
+    },
+    {
+      "name": "primary audio chi-square",
+      "passed": true,
+      "detail": "actual=24.3141791037; expected=24.3141791037"
+    },
+    {
+      "name": "primary audio df",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "primary audio p",
+      "passed": true,
+      "detail": "actual=5.25101297767e-06; expected=5.2510129777e-06"
+    },
+    {
+      "name": "primary audio Cramer's V",
+      "passed": true,
+      "detail": "actual=0.118108488649; expected=0.11810849"
+    },
+    {
+      "name": "historical aggregate equals row source",
+      "passed": true,
+      "detail": "rows=2860"
+    },
+    {
+      "name": "GEE word_count rows/clusters",
+      "passed": true,
+      "detail": "actual=(2095, 1909); expected=(2095, 1909)"
+    },
+    {
+      "name": "GEE word_count Wald",
+      "passed": true,
+      "detail": "actual=290.077155448; expected=290.0772"
+    },
+    {
+      "name": "GEE word_count p",
+      "passed": true,
+      "detail": "actual=1.02458037088e-63; expected=1.02458e-63"
+    },
+    {
+      "name": "GEE word_count Holm p",
+      "passed": true,
+      "detail": "actual=5.12290185441e-63; expected=5.1229e-63"
+    },
+    {
+      "name": "GEE word_count converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "GEE word_count iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "GEE word_count robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "GEE unique_word_count rows/clusters",
+      "passed": true,
+      "detail": "actual=(2095, 1909); expected=(2095, 1909)"
+    },
+    {
+      "name": "GEE unique_word_count Wald",
+      "passed": true,
+      "detail": "actual=128.091559412; expected=128.0916"
+    },
+    {
+      "name": "GEE unique_word_count p",
+      "passed": true,
+      "detail": "actual=1.53204416297e-28; expected=1.53204e-28"
+    },
+    {
+      "name": "GEE unique_word_count Holm p",
+      "passed": true,
+      "detail": "actual=6.12817665189e-28; expected=6.12818e-28"
+    },
+    {
+      "name": "GEE unique_word_count converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "GEE unique_word_count iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "GEE unique_word_count robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "GEE lexical_diversity rows/clusters",
+      "passed": true,
+      "detail": "actual=(2095, 1909); expected=(2095, 1909)"
+    },
+    {
+      "name": "GEE lexical_diversity Wald",
+      "passed": true,
+      "detail": "actual=108.24176075; expected=108.24176"
+    },
+    {
+      "name": "GEE lexical_diversity p",
+      "passed": true,
+      "detail": "actual=3.13040333376e-24; expected=3.1304e-24"
+    },
+    {
+      "name": "GEE lexical_diversity Holm p",
+      "passed": true,
+      "detail": "actual=9.39121000128e-24; expected=9.39121e-24"
+    },
+    {
+      "name": "GEE lexical_diversity converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "GEE lexical_diversity iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "GEE lexical_diversity robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "GEE repetition_ratio rows/clusters",
+      "passed": true,
+      "detail": "actual=(2095, 1909); expected=(2095, 1909)"
+    },
+    {
+      "name": "GEE repetition_ratio Wald",
+      "passed": true,
+      "detail": "actual=108.24176075; expected=108.24176"
+    },
+    {
+      "name": "GEE repetition_ratio p",
+      "passed": true,
+      "detail": "actual=3.13040333376e-24; expected=3.1304e-24"
+    },
+    {
+      "name": "GEE repetition_ratio Holm p",
+      "passed": true,
+      "detail": "actual=9.39121000128e-24; expected=9.39121e-24"
+    },
+    {
+      "name": "GEE repetition_ratio converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "GEE repetition_ratio iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "GEE repetition_ratio robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "GEE avg_word_length rows/clusters",
+      "passed": true,
+      "detail": "actual=(2095, 1909); expected=(2095, 1909)"
+    },
+    {
+      "name": "GEE avg_word_length Wald",
+      "passed": true,
+      "detail": "actual=772.351982839; expected=772.352"
+    },
+    {
+      "name": "GEE avg_word_length p",
+      "passed": true,
+      "detail": "actual=1.93151410077e-168; expected=1.9315e-168"
+    },
+    {
+      "name": "GEE avg_word_length Holm p",
+      "passed": true,
+      "detail": "actual=1.15890846046e-167; expected=1.1589e-167"
+    },
+    {
+      "name": "GEE avg_word_length converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "GEE avg_word_length iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "GEE avg_word_length robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "GEE chorus_repetition_count rows/clusters",
+      "passed": true,
+      "detail": "actual=(1943, 1764); expected=(1943, 1764)"
+    },
+    {
+      "name": "GEE chorus_repetition_count Wald",
+      "passed": true,
+      "detail": "actual=3.33091165683; expected=3.33091"
+    },
+    {
+      "name": "GEE chorus_repetition_count p",
+      "passed": true,
+      "detail": "actual=0.189104439156; expected=0.189104"
+    },
+    {
+      "name": "GEE chorus_repetition_count Holm p",
+      "passed": true,
+      "detail": "actual=0.189104439156; expected=0.189104"
+    },
+    {
+      "name": "GEE chorus_repetition_count converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "GEE chorus_repetition_count iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "GEE chorus_repetition_count robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "audio logistic GEE converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "audio logistic GEE iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "audio logistic GEE rows/clusters",
+      "passed": true,
+      "detail": "actual=(2098, 1912)"
+    },
+    {
+      "name": "audio logistic GEE df",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "audio logistic GEE omnibus Wald",
+      "passed": true,
+      "detail": "actual=21.7231627219; expected=21.723163"
+    },
+    {
+      "name": "audio logistic GEE omnibus p",
+      "passed": true,
+      "detail": "actual=1.91811724625e-05; expected=1.918e-05"
+    },
+    {
+      "name": "audio logistic GEE VN vs US coefficient",
+      "passed": true,
+      "detail": "actual=0.498085011944; expected=0.498085"
+    },
+    {
+      "name": "audio logistic GEE VN vs US OR",
+      "passed": true,
+      "detail": "actual=1.64556701031; expected=1.645567"
+    },
+    {
+      "name": "audio logistic GEE KR vs US coefficient",
+      "passed": true,
+      "detail": "actual=0.116763340741; expected=0.116763"
+    },
+    {
+      "name": "audio logistic GEE KR vs US OR",
+      "passed": true,
+      "detail": "actual=1.1238534279; expected=1.123853"
+    },
+    {
+      "name": "audio logistic GEE robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "missingness logistic GEE converged",
+      "passed": true,
+      "detail": "True"
+    },
+    {
+      "name": "missingness logistic GEE iterations",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "missingness logistic GEE rows/clusters",
+      "passed": true,
+      "detail": "actual=(2098, 1912)"
+    },
+    {
+      "name": "missingness logistic GEE df",
+      "passed": true,
+      "detail": "2"
+    },
+    {
+      "name": "missingness logistic GEE omnibus Wald",
+      "passed": true,
+      "detail": "actual=36.034639424; expected=36.034639"
+    },
+    {
+      "name": "missingness logistic GEE omnibus p",
+      "passed": true,
+      "detail": "actual=1.49684720381e-08; expected=1.496847e-08"
+    },
+    {
+      "name": "missingness logistic GEE VN vs US coefficient",
+      "passed": true,
+      "detail": "actual=-0.857805966906; expected=-0.857806"
+    },
+    {
+      "name": "missingness logistic GEE VN vs US OR",
+      "passed": true,
+      "detail": "actual=0.424091533181; expected=0.424092"
+    },
+    {
+      "name": "missingness logistic GEE KR vs US coefficient",
+      "passed": true,
+      "detail": "actual=-1.20539629211; expected=-1.205396"
+    },
+    {
+      "name": "missingness logistic GEE KR vs US OR",
+      "passed": true,
+      "detail": "actual=0.299573257468; expected=0.299573"
+    },
+    {
+      "name": "missingness logistic GEE robust covariance",
+      "passed": true,
+      "detail": "finite=True; contrast_rank=2"
+    },
+    {
+      "name": "GEE no warnings",
+      "passed": true,
+      "detail": "none"
+    }
+  ],
+  "results": {
+    "primary_kw": [
+      {
+        "analysis_type": "primary",
+        "observational_unit": "market-exclusive track",
+        "feature": "word_count",
+        "n_vn": 487,
+        "n_us": 721,
+        "n_kr": 532,
+        "n_total": 1740,
+        "h_statistic": 269.884707835043,
+        "df": 2,
+        "p_raw": 2.4847363792868758e-59,
+        "epsilon_squared": 0.15422262972656478,
+        "p_holm": 1.242368189643438e-58,
+        "alpha": 0.05,
+        "significant_holm": true
+      },
+      {
+        "analysis_type": "primary",
+        "observational_unit": "market-exclusive track",
+        "feature": "unique_word_count",
+        "n_vn": 487,
+        "n_us": 721,
+        "n_kr": 532,
+        "n_total": 1740,
+        "h_statistic": 135.78396916491738,
+        "df": 2,
+        "p_raw": 3.272545777885278e-30,
+        "epsilon_squared": 0.07702013193144351,
+        "p_holm": 6.545091555770556e-30,
+        "alpha": 0.05,
+        "significant_holm": true
+      },
+      {
+        "analysis_type": "primary",
+        "observational_unit": "market-exclusive track",
+        "feature": "lexical_diversity",
+        "n_vn": 487,
+        "n_us": 721,
+        "n_kr": 532,
+        "n_total": 1740,
+        "h_statistic": 147.71394618843868,
+        "df": 2,
+        "p_raw": 8.400867502165252e-33,
+        "epsilon_squared": 0.0838882822040522,
+        "p_holm": 3.3603470008661007e-32,
+        "alpha": 0.05,
+        "significant_holm": true
+      },
+      {
+        "analysis_type": "primary",
+        "observational_unit": "market-exclusive track",
+        "feature": "repetition_ratio",
+        "n_vn": 487,
+        "n_us": 721,
+        "n_kr": 532,
+        "n_total": 1740,
+        "h_statistic": 147.71394618843868,
+        "df": 2,
+        "p_raw": 8.400867502165252e-33,
+        "epsilon_squared": 0.0838882822040522,
+        "p_holm": 3.3603470008661007e-32,
+        "alpha": 0.05,
+        "significant_holm": true
+      },
+      {
+        "analysis_type": "primary",
+        "observational_unit": "market-exclusive track",
+        "feature": "avg_word_length",
+        "n_vn": 487,
+        "n_us": 721,
+        "n_kr": 532,
+        "n_total": 1740,
+        "h_statistic": 557.0659939922015,
+        "df": 2,
+        "p_raw": 1.083069626315294e-121,
+        "epsilon_squared": 0.31955440068635665,
+        "p_holm": 6.498417757891764e-121,
+        "alpha": 0.05,
+        "significant_holm": true
+      },
+      {
+        "analysis_type": "primary",
+        "observational_unit": "market-exclusive track",
+        "feature": "chorus_repetition_count",
+        "n_vn": 460,
+        "n_us": 629,
+        "n_kr": 512,
+        "n_total": 1601,
+        "h_statistic": 2.368122346030982,
+        "df": 2,
+        "p_raw": 0.30603335704635815,
+        "epsilon_squared": 0.0002303644217966096,
+        "p_holm": 0.30603335704635815,
+        "alpha": 0.05,
+        "significant_holm": false
+      }
+    ],
+    "primary_audio_mode": {
+      "observed": {
+        "major": {
+          "VN": 336,
+          "US": 396,
+          "KR": 311
+        },
+        "minor": {
+          "VN": 152,
+          "US": 325,
+          "KR": 223
+        }
+      },
+      "chi_square": 24.31417910369055,
+      "df": 2,
+      "p": 5.2510129776697085e-06,
+      "cramers_v": 0.11810848864939595
+    },
+    "chorus_zero_fill": {
+      "market_n": {
+        "VN": 487,
+        "US": 721,
+        "KR": 532
+      },
+      "zero_filled": {
+        "VN": 27,
+        "US": 92,
+        "KR": 20
+      },
+      "H": 7.703865848528881,
+      "p": 0.021238644046509287,
+      "epsilon_squared": 0.003283745451081682
+    },
+    "rank_gee": [
+      {
+        "analysis_type": "sensitivity",
+        "feature": "word_count",
+        "rows": 2095,
+        "clusters": 1909,
+        "wald_chi_square": 290.0771554482433,
+        "df": 2,
+        "p_raw": 1.0245803708810295e-63,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence",
+        "rank_transform": "average rank / (N + 1)",
+        "vn_vs_us_coefficient": 0.07528400885338964,
+        "kr_vs_us_coefficient": -0.15204400421818562,
+        "p_holm": 5.122901854405148e-63
+      },
+      {
+        "analysis_type": "sensitivity",
+        "feature": "unique_word_count",
+        "rows": 2095,
+        "clusters": 1909,
+        "wald_chi_square": 128.09155941184935,
+        "df": 2,
+        "p_raw": 1.5320441629727248e-28,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence",
+        "rank_transform": "average rank / (N + 1)",
+        "vn_vs_us_coefficient": 0.09026365161074669,
+        "kr_vs_us_coefficient": -0.07068369946584274,
+        "p_holm": 6.128176651890899e-28
+      },
+      {
+        "analysis_type": "sensitivity",
+        "feature": "lexical_diversity",
+        "rows": 2095,
+        "clusters": 1909,
+        "wald_chi_square": 108.24176074996183,
+        "df": 2,
+        "p_raw": 3.130403333759191e-24,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence",
+        "rank_transform": "average rank / (N + 1)",
+        "vn_vs_us_coefficient": 0.010255480729490271,
+        "kr_vs_us_coefficient": 0.13593488507079127,
+        "p_holm": 9.391210001277032e-24
+      },
+      {
+        "analysis_type": "sensitivity",
+        "feature": "repetition_ratio",
+        "rows": 2095,
+        "clusters": 1909,
+        "wald_chi_square": 108.24176074996194,
+        "df": 2,
+        "p_raw": 3.1304033337590106e-24,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence",
+        "rank_transform": "average rank / (N + 1)",
+        "vn_vs_us_coefficient": -0.010255480729490228,
+        "kr_vs_us_coefficient": -0.13593488507079135,
+        "p_holm": 9.391210001277032e-24
+      },
+      {
+        "analysis_type": "sensitivity",
+        "feature": "avg_word_length",
+        "rows": 2095,
+        "clusters": 1909,
+        "wald_chi_square": 772.3519828389544,
+        "df": 2,
+        "p_raw": 1.9315141007706698e-168,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence",
+        "rank_transform": "average rank / (N + 1)",
+        "vn_vs_us_coefficient": -0.30181390816360554,
+        "kr_vs_us_coefficient": -0.26325542504282023,
+        "p_holm": 1.1589084604624018e-167
+      },
+      {
+        "analysis_type": "sensitivity",
+        "feature": "chorus_repetition_count",
+        "rows": 1943,
+        "clusters": 1764,
+        "wald_chi_square": 3.3309116568271686,
+        "df": 2,
+        "p_raw": 0.18910443915647726,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence",
+        "rank_transform": "average rank / (N + 1)",
+        "vn_vs_us_coefficient": -0.0012334693860907935,
+        "kr_vs_us_coefficient": -0.021230087716713402,
+        "p_holm": 0.18910443915647726
+      }
+    ],
+    "audio_logistic_gee": [
+      {
+        "analysis_type": "sensitivity",
+        "term": "C(market, Treatment(reference='US'))[T.VN]",
+        "rows": 2098,
+        "clusters": 1912,
+        "coefficient_log_odds": 0.49808501194448246,
+        "odds_ratio": 1.6455670103092823,
+        "coefficient_p": 7.25421648699169e-06,
+        "omnibus_wald_chi_square": 21.723162721891438,
+        "omnibus_df": 2,
+        "omnibus_p": 1.9181172462497918e-05,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence"
+      },
+      {
+        "analysis_type": "sensitivity",
+        "term": "C(market, Treatment(reference='US'))[T.KR]",
+        "rows": 2098,
+        "clusters": 1912,
+        "coefficient_log_odds": 0.11676334074061706,
+        "odds_ratio": 1.1238534278959837,
+        "coefficient_p": 0.24709587197714789,
+        "omnibus_wald_chi_square": 21.723162721891438,
+        "omnibus_df": 2,
+        "omnibus_p": 1.9181172462497918e-05,
+        "converged": true,
+        "fit_iterations": 2,
+        "robust_covariance_finite": true,
+        "market_contrast_covariance_rank": 2,
+        "covariance": "robust sandwich",
+        "working_correlation": "independence"
+      }
+    ],
+    "missingness_logistic_gee": {
+      "rows": 2098,
+      "clusters": 1912,
+      "wald_chi_square": 36.03463942397957,
+      "df": 2,
+      "p": 1.496847203806411e-08,
+      "converged": true,
+      "fit_iterations": 2,
+      "robust_covariance_finite": true,
+      "market_contrast_covariance_rank": 2
+    },
+    "historical_audio_mode": {
+      "observed": {
+        "major": {
+          "VN": 567,
+          "US": 539,
+          "KR": 598
+        },
+        "minor": {
+          "VN": 318,
+          "US": 416,
+          "KR": 422
+        }
+      },
+      "chi_square": 11.69615063640466,
+      "df": 2,
+      "p": 0.00288544738515002
+    }
+  }
+}

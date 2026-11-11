@@ -1,0 +1,3 @@
+analysis_type,term,rows,clusters,coefficient_log_odds,odds_ratio,coefficient_p,omnibus_wald_chi_square,omnibus_df,omnibus_p,converged,fit_iterations,robust_covariance_finite,market_contrast_covariance_rank,covariance,working_correlation
+sensitivity,"C(market, Treatment(reference='US'))[T.VN]",2098,1912,0.49808501194448246,1.6455670103092823,7.25421648699169e-06,21.723162721891438,2,1.9181172462497918e-05,True,2,True,2,robust sandwich,independence
+sensitivity,"C(market, Treatment(reference='US'))[T.KR]",2098,1912,0.11676334074061706,1.1238534278959837,0.24709587197714789,21.723162721891438,2,1.9181172462497918e-05,True,2,True,2,robust sandwich,independence

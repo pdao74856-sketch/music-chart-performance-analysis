@@ -1,0 +1,4 @@
+analysis_type,observational_unit,total_n,missing_chorus_n,vn_missing,us_missing,kr_missing,includes_missing_lyrics,note
+descriptive reconciliation,unique track,1912,148,33,95,27,True,market membership counts overlap for repeated tracks
+descriptive reconciliation,all-market track-market row,2098,155,33,95,27,True,3 missing-lyrics rows included
+descriptive reconciliation,market-exclusive track,1743,142,28,92,22,True,one row per track

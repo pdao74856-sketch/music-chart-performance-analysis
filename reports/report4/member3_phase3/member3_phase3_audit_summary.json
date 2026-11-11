@@ -1,0 +1,159 @@
+{
+  "vif_audit_rows": [
+    {
+      "feature": "lexical_diversity_std",
+      "vif_before_disk_18vars": 1000799917193443.6,
+      "vif_stage0_reproduced_18vars": 1000799917193443.5,
+      "vif_stage1_drop_lexdiv_17vars": NaN,
+      "vif_stage2_drop_uniqueword_16vars": NaN,
+      "vif_stage3_final_24vars_vif_after_csv": NaN,
+      "vif_stage3_final_24vars_canonical_model2": NaN,
+      "vif_lyrics7_raw_tokens": NaN,
+      "vif_lyrics7_log1p_both_counts": NaN
+    },
+    {
+      "feature": "repetition_ratio_std",
+      "vif_before_disk_18vars": 1000799917193443.6,
+      "vif_stage0_reproduced_18vars": 1000799917193443.5,
+      "vif_stage1_drop_lexdiv_17vars": 4.337249466453559,
+      "vif_stage2_drop_uniqueword_16vars": 1.4740207813693134,
+      "vif_stage3_final_24vars_vif_after_csv": 1.767,
+      "vif_stage3_final_24vars_canonical_model2": 1.7669486844124416,
+      "vif_lyrics7_raw_tokens": 4.157694186175046,
+      "vif_lyrics7_log1p_both_counts": 21.613399337652197
+    },
+    {
+      "feature": "unique_word_count_std",
+      "vif_before_disk_18vars": 14.822446738878726,
+      "vif_stage0_reproduced_18vars": 14.802634042593821,
+      "vif_stage1_drop_lexdiv_17vars": 14.802634042593821,
+      "vif_stage2_drop_uniqueword_16vars": NaN,
+      "vif_stage3_final_24vars_vif_after_csv": NaN,
+      "vif_stage3_final_24vars_canonical_model2": NaN,
+      "vif_lyrics7_raw_tokens": 14.34005248602586,
+      "vif_lyrics7_log1p_both_counts": 52.995494145142764
+    },
+    {
+      "feature": "word_count_std",
+      "vif_before_disk_18vars": 16.43833909316698,
+      "vif_stage0_reproduced_18vars": 16.41964205388289,
+      "vif_stage1_drop_lexdiv_17vars": 16.41964205388289,
+      "vif_stage2_drop_uniqueword_16vars": 3.402975318068052,
+      "vif_stage3_final_24vars_vif_after_csv": 3.7637,
+      "vif_stage3_final_24vars_canonical_model2": 3.773691685833298,
+      "vif_lyrics7_raw_tokens": 16.132968333522825,
+      "vif_lyrics7_log1p_both_counts": 70.84715754753111
+    },
+    {
+      "feature": "line_count_std",
+      "vif_before_disk_18vars": 3.110749333617118,
+      "vif_stage0_reproduced_18vars": 3.133631376137035,
+      "vif_stage1_drop_lexdiv_17vars": 3.133631376137035,
+      "vif_stage2_drop_uniqueword_16vars": 3.048913290655937,
+      "vif_stage3_final_24vars_vif_after_csv": 2.7497,
+      "vif_stage3_final_24vars_canonical_model2": 2.763068638954322,
+      "vif_lyrics7_raw_tokens": 2.743354840726452,
+      "vif_lyrics7_log1p_both_counts": 2.4502651985566724
+    },
+    {
+      "feature": "punctuation_ratio_std",
+      "vif_before_disk_18vars": 1.341971217465668,
+      "vif_stage0_reproduced_18vars": 1.348186240113955,
+      "vif_stage1_drop_lexdiv_17vars": 1.3481862401139553,
+      "vif_stage2_drop_uniqueword_16vars": 1.3464437064137287,
+      "vif_stage3_final_24vars_vif_after_csv": 1.368,
+      "vif_stage3_final_24vars_canonical_model2": 1.3776123020161297,
+      "vif_lyrics7_raw_tokens": 1.0802559754071417,
+      "vif_lyrics7_log1p_both_counts": 1.0714480308519347
+    },
+    {
+      "feature": "chorus_repetition_count_std",
+      "vif_before_disk_18vars": 1.3455245964123748,
+      "vif_stage0_reproduced_18vars": 1.3429340302973394,
+      "vif_stage1_drop_lexdiv_17vars": 1.3429340302973394,
+      "vif_stage2_drop_uniqueword_16vars": 1.299342705119971,
+      "vif_stage3_final_24vars_vif_after_csv": 1.2991,
+      "vif_stage3_final_24vars_canonical_model2": 1.2983171770313169,
+      "vif_lyrics7_raw_tokens": 1.3282639277415567,
+      "vif_lyrics7_log1p_both_counts": 1.2828243098345995
+    },
+    {
+      "feature": "avg_word_length_std",
+      "vif_before_disk_18vars": 1.1894405630608913,
+      "vif_stage0_reproduced_18vars": 1.1882570271481852,
+      "vif_stage1_drop_lexdiv_17vars": 1.1882570271481854,
+      "vif_stage2_drop_uniqueword_16vars": 1.1368137825037092,
+      "vif_stage3_final_24vars_vif_after_csv": 1.2137,
+      "vif_stage3_final_24vars_canonical_model2": 1.2149918007416818,
+      "vif_lyrics7_raw_tokens": 1.069233980404688,
+      "vif_lyrics7_log1p_both_counts": 1.080214996671732
+    }
+  ],
+  "word_count_transformation_and_leverage_audit": {
+    "n_train": 1685,
+    "p_params_model2": 25,
+    "leverage_threshold_2p_n": 0.02967359050445104,
+    "leverage_threshold_3p_n": 0.04451038575667656,
+    "cooks_threshold_4_n": 0.002373887240356083,
+    "n_tracks_wc_ge_1000_in_train": 9,
+    "raw_word_count_train": {
+      "mean": 378.85103857566764,
+      "sd": 178.8282353924134,
+      "median": 348.0,
+      "iqr": 186.0,
+      "min": 11.0,
+      "max": 1985.0,
+      "skewness": 1.5765301676312786,
+      "excess_kurtosis": 6.420456629614836,
+      "dagostino_k2": 608.6408151060904,
+      "dagostino_p": 6.844256375107645e-133,
+      "max_abs_z": 8.984184025564586,
+      "n_abs_z_gt_3": 23,
+      "max_univariate_leverage": 0.04849588285175661,
+      "model2_max_hat_leverage_on_high_wc_tracks": 0.07636410606318281,
+      "model2_mean_hat_leverage_on_high_wc_tracks": 0.03661611486820331,
+      "model2_max_cooks_d_on_high_wc_tracks": 0.003215481963214689,
+      "model2_overall_max_hat_leverage": 0.16518836894119754,
+      "model2_overall_max_cooks_d": 0.012177603354769789,
+      "model2_n_cooks_gt_4_n": 103,
+      "model2_word_count_vif": 3.454397744409019
+    },
+    "log1p_word_count_train": {
+      "mean": 5.830276673429749,
+      "sd": 0.490625998325391,
+      "median": 5.855071922202427,
+      "iqr": 0.5210671178181876,
+      "min": 2.4849066497880004,
+      "max": 7.593877844605118,
+      "skewness": -0.7931412599203741,
+      "excess_kurtosis": 2.6454869004032506,
+      "dagostino_k2": 249.13757341805677,
+      "dagostino_p": 7.95176093697049e-55,
+      "max_abs_z": 6.820598925728898,
+      "n_abs_z_gt_3": 18,
+      "max_univariate_leverage": 0.028202118519676085,
+      "model2_max_hat_leverage_on_high_wc_tracks": 0.0501927613688662,
+      "model2_mean_hat_leverage_on_high_wc_tracks": 0.025345645356818644,
+      "model2_max_cooks_d_on_high_wc_tracks": 0.0017558810022968723,
+      "model2_overall_max_hat_leverage": 0.16554193916349966,
+      "model2_overall_max_cooks_d": 0.012113600377052376,
+      "model2_n_cooks_gt_4_n": 99,
+      "model2_word_count_vif": 3.773691685833298
+    }
+  },
+  "mode_market_interaction_auxiliary_test": {
+    "wald_chi2": 2.4278433536808564,
+    "df": 2,
+    "p_value": 0.29703013614051627,
+    "mode__x__VN": {
+      "coef": -7.3934615539720365,
+      "se": 4.927043326363952,
+      "p_value": 0.1334621852141879
+    },
+    "mode__x__KR": {
+      "coef": -1.7713181772442315,
+      "se": 4.6697446929676545,
+      "p_value": 0.7044517410022625
+    }
+  }
+}

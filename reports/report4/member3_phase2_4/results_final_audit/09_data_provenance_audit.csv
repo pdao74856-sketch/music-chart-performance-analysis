@@ -1,0 +1,13 @@
+record_type,name,path,sha256,rows,value
+input,cache,data\processed\modeling_dataset_clean_cache.csv,16e8119c679373e45626d3282dcac673bae4579ba7f8b64330295d33a4f2837c,,
+input,features,reports\report3\lyrics_features_extracted.csv,727a4b8fb4a0030b173ce094eb005bb80efed1a145ad7fbd1e35f2c882dbace7,,
+input,provenance,data\raw\lyrics_collection_results.json,878c43c8baf81734dae644c77daf455061f4d6e0414c3aa148edb7cf381ceb7b,,
+input,historical_mode,reports\report4\chart_data\member2\fig3_tonal_harmony_market.csv,68f24dbf5a9562446cae8fa90f212935aa16b0c395ea1eb334816b43637281a4,,
+input,historical_rows,reports\report4\chart_data\member2\audio_features_eda_source.csv,6a88350e0c530514930e56f9dbd115f23e9491ecf8fb0afb649cc1d42c3727ee,,
+audit,canonical_logical_fingerprint,,,,bb0aea6d42049da728c8339bbf92388991825d9128cb85122df081e71a0a6e81
+audit,canonical_market_rows,,,,2098
+audit,canonical_unique_tracks,,,,1912
+audit,exclusive_tracks,,,,1743
+audit,canonical_duplicate_track_market_pairs,,,,0
+audit,feature_track_rows,,,,1912
+audit,provenance_unique_market_pairs,,,,2098

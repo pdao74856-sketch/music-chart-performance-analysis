@@ -1,0 +1,7 @@
+analysis_type,feature,rows,clusters,wald_chi_square,df,p_raw,converged,fit_iterations,robust_covariance_finite,market_contrast_covariance_rank,covariance,working_correlation,rank_transform,vn_vs_us_coefficient,kr_vs_us_coefficient,p_holm
+sensitivity,word_count,2095,1909,290.0771554482433,2,1.0245803708810295e-63,True,2,True,2,robust sandwich,independence,average rank / (N + 1),0.07528400885338964,-0.15204400421818562,5.122901854405148e-63
+sensitivity,unique_word_count,2095,1909,128.09155941184935,2,1.5320441629727248e-28,True,2,True,2,robust sandwich,independence,average rank / (N + 1),0.09026365161074669,-0.07068369946584274,6.128176651890899e-28
+sensitivity,lexical_diversity,2095,1909,108.24176074996183,2,3.130403333759191e-24,True,2,True,2,robust sandwich,independence,average rank / (N + 1),0.010255480729490271,0.13593488507079127,9.391210001277032e-24
+sensitivity,repetition_ratio,2095,1909,108.24176074996194,2,3.1304033337590106e-24,True,2,True,2,robust sandwich,independence,average rank / (N + 1),-0.010255480729490228,-0.13593488507079135,9.391210001277032e-24
+sensitivity,avg_word_length,2095,1909,772.3519828389544,2,1.9315141007706698e-168,True,2,True,2,robust sandwich,independence,average rank / (N + 1),-0.30181390816360554,-0.26325542504282023,1.1589084604624018e-167
+sensitivity,chorus_repetition_count,1943,1764,3.3309116568271686,2,0.18910443915647726,True,2,True,2,robust sandwich,independence,average rank / (N + 1),-0.0012334693860907935,-0.021230087716713402,0.18910443915647726
