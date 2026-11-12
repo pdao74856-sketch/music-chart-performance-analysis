@@ -22,3 +22,7 @@ plotly==5.24.1
 
 # Cloud Data Pipeline & Supabase SDK
 supabase==2.31.0
+
+# Lyrics extraction for uploaded tracks
+regex
+PyYAML

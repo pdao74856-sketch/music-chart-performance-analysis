@@ -45,13 +45,12 @@ TEST_TRACK_IDS_PATH = ROOT_DIR / "models" / "test_track_ids.json"
 # 1. EMPIRICAL CONFIGURATION & CONSTANTS
 # ==============================================================================
 
-# Empirical Chart Score Quantiles from Clean Dataset (n=2,098)
-# Q1 = -11.93, Median = 15.16, Q3 = 37.58
-TIER_THRESHOLDS = {
-    "Q1": -11.93,
-    "Median": 15.16,
-    "Q3": 37.58,
-}
+from src.utils.tier_classifier import (
+    classify_chart_tier,
+    get_acoustic_fit_profile,
+    load_acoustic_thresholds,
+    EMPIRICAL_CHART_THRESHOLDS as TIER_THRESHOLDS,
+)
 
 # 6 Key Acoustic Dimensions for Radar Chart
 RADAR_FEATURE_DEFS = [
@@ -186,17 +185,6 @@ SHOWCASE_SPECIFICATIONS = [
         "highlight": "Điểm đáy BXH (-94.0 điểm, Tier 4); Độ sáng phổ cao nhất 15 bài (2,835 Hz) nhưng điểm BXH thấp",
     },
 ]
-
-def classify_chart_tier(score: float) -> Tuple[str, str]:
-    """Phân loại thứ hạng thành tích bài hát dựa trên phân vị thực nghiệm."""
-    if score >= TIER_THRESHOLDS["Q3"]:
-        return "Tier 1", "Viral Hit (Top 25% Đỉnh BXH)"
-    elif score >= TIER_THRESHOLDS["Median"]:
-        return "Tier 2", "Solid Performer (Trên Trung vị)"
-    elif score >= TIER_THRESHOLDS["Q1"]:
-        return "Tier 3", "Moderate / Lower (Dưới Trung vị)"
-    else:
-        return "Tier 4", "Deep Chart (Nhóm Đáy BXH)"
 
 
 # ==============================================================================
@@ -529,6 +517,7 @@ def render() -> None:
     abs_rf = float(sel_row["abs_error_rf"])
 
     tier_code, tier_desc = classify_chart_tier(actual_score)
+    acoustic_profile = get_acoustic_fit_profile(pred_rf, market=sel_row["market"], model_type="rf")
 
     st.markdown("---")
 
@@ -552,11 +541,15 @@ def render() -> None:
             "Tier 4": "📉",
         }.get(tier_code, "📊")
         st.metric(
-            label="Phân Tầng Thành Tích",
+            label="Phân Tầng Thành Tích Thực Tế",
             value=f"{badge_color} {tier_code}",
-            help=f"Dựa trên phân vị thực nghiệm: Q1={TIER_THRESHOLDS['Q1']}, Med={TIER_THRESHOLDS['Median']}, Q3={TIER_THRESHOLDS['Q3']}",
+            help=f"Dựa trên phân vị thực nghiệm BXH: Q1={TIER_THRESHOLDS['Q1']}, Med={TIER_THRESHOLDS['Median']}, Q3={TIER_THRESHOLDS['Q3']}",
         )
-        st.caption(tier_desc)
+        st.caption(f"**{tier_desc}**")
+        st.caption(
+            f"Top ≈{acoustic_profile['top_percent']:.0f}% điểm RF dự đoán "
+            f"tại {acoustic_profile['market_name']}."
+        )
 
     # 5. Giao Diện Song Song: Radar Chart (Trái) & 3 Cột Kết Quả Đối Chiếu (Phải)
     col_chart, col_metrics = st.columns([3, 2])
@@ -636,30 +629,19 @@ def render() -> None:
 
         st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
 
-    # 7. Nhận Định Kinh Tế Lượng Học Thuật (Academic & Econometric Note)
-    st.markdown("---")
-    st.markdown("### 🎓 Nhận Định Kinh Tế Lượng & Tính Bất Định Của Ca Khúc Hit")
-    ols_min = float(showcase_df["pred_ols_m3"].min())
-    ols_max = float(showcase_df["pred_ols_m3"].max())
-    rf_min = float(showcase_df["pred_rf"].min())
-    rf_max = float(showcase_df["pred_rf"].max())
-
-    econometric_markdown = (
-        r"📌 **Bối cảnh phương sai giải thích ($R^2_{\text{OOS}} \approx 3.4\% - 6.9\%$):**"
-        "\n\n"
-        f"1. **Hiện tượng Co cụm về Trung vị (Shrinkage to Mean):** Điểm dự đoán của cả OLS (khoảng ${ols_min:+.1f}$ đến ${ols_max:+.1f}$) "
-        f"và Random Forest (khoảng ${rf_min:+.1f}$ đến ${rf_max:+.1f}$) trên 15 bài mẫu đều hội tụ quanh trung vị mẫu ($15.16$). Điều này phản ánh bản chất thống kê lành mạnh: "
-        r"khi một tập đặc trưng chỉ giải thích một phần phương sai ($R^2_{\text{OOS, OLS}}=0.0340$, $R^2_{\text{OOS, RF}}=0.0686$), các mô hình tối ưu không được phép 'dự đoán cực đoan' "
-        "để tránh bùng nổ sai số bình phương.\n\n"
-        r"2. **Khoảng cách tại nhóm ca khúc đỉnh cao (Superstar Effect):** Đối với các ca khúc Tier 1 đạt điểm cực đại ($\ge 80$), "
-        r"khoảng cách sai số lớn giữa dự đoán (~$10-20$) và thực tế ($80-99$) phản ánh giới hạn của các đặc trưng nội tại bài hát: "
-        r"*các yếu tố ngoài mô hình (như danh tiếng tích lũy của nghệ sĩ, chiến dịch truyền thông, mức độ viral mạng xã hội, vị trí trên các playlist đề xuất...) "
-        r"không được đo lường trực tiếp trong dữ liệu và có thể liên quan mật thiết đến phần lớn phương sai chưa được giải thích ($1 - R^2 \approx 93\% - 96\%).*\n\n"
-        r"3. **Kiểm định Paired Cluster Bootstrap ($\Delta\text{MAE} = +0.6505$, $95\%$ CI $[-0.8057, +2.0268]$):** "
-        r"Do khoảng tin cậy 95% của chênh lệch sai số tuyệt đối chứa giá trị 0, sự vượt trội của Random Forest so với OLS Model 3 "
-        r"chưa đạt ý nghĩa thống kê ở mức $\alpha = 0.05$ trên toàn bộ 3 thị trường, khẳng định mối quan hệ giữa đặc trưng âm học và thành tích BXH mang tính chất tương quan biên (marginal association) hơn là các mẫu hình phi tuyến tính phức tạp."
-    )
-    st.info(econometric_markdown)
+    st.subheader("Đánh giá shortlist Random Forest")
+    reference = load_acoustic_thresholds()
+    baseline = reference["metadata"]["baseline_hit_rate"]
+    rf = reference["empirical_hit_screener"]["rf"]
+    baseline_col, shortlist_col = st.columns(2)
+    with baseline_col:
+        st.metric("Đạt Tier 1 thực tế · Toàn bộ tập test", f"{baseline:.1f}%")
+    with shortlist_col:
+        st.metric(
+            "Đạt Tier 1 thực tế · Nhóm RF chọn",
+            f"{rf['tier1_count_top22']}/{rf['n_top22']} · {rf['tier1_rate_top22']:.1f}%",
+        )
+    st.caption("Phân tích thăm dò trên tập test. Ngưỡng shortlist được tính riêng theo từng thị trường trên chính tập này.")
 
     # 8. Bảng Tổng Hợp Toàn Bộ 15 Bài Mẫu
     with st.expander("📋 Xem Danh Sách Tổng Hợp Toàn Bộ 15 Ca Khúc Showcase", expanded=False):

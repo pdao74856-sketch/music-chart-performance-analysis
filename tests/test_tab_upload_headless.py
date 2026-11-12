@@ -41,7 +41,6 @@ from app.components.tab_upload import (
     FEATURE_META,
     FEATURE_GROUPS,
     SUPPORTED_FORMATS,
-    render,
 )
 
 
@@ -239,16 +238,97 @@ class TestTabUploadHeadless:
         assert bad_dur is None
         assert bad_err is not None
 
-    def test_09_supported_formats_and_headless_render(self):
-        """Verify SUPPORTED_FORMATS includes m4a and render() executes safely headlessly."""
-        assert "m4a" in SUPPORTED_FORMATS, "SUPPORTED_FORMATS must support m4a"
+    def test_09_supported_formats(self):
+        """Verify upload only advertises supported formats."""
+        assert "m4a" not in SUPPORTED_FORMATS
         assert "mp3" in SUPPORTED_FORMATS
         assert "wav" in SUPPORTED_FORMATS
         assert "flac" in SUPPORTED_FORMATS
         assert "ogg" in SUPPORTED_FORMATS
 
-        # Verify headless execution without active upload
-        render()
+    def test_10_render_prediction_result_with_acoustic_fit_profile(self):
+        """Verify the prediction result renders a market percentile and model scores."""
+        pred = {
+            "ols_prediction": 14.2,
+            "rf_prediction": 18.5,
+            "ensemble_prediction": 16.35,
+        }
+        from app.components.tab_upload import _render_prediction_result
+        _render_prediction_result(pred, "🇻🇳 Việt Nam", market_code="VN")
+
+    def test_11_user_lyrics_extraction_and_smart_fallback(self):
+        """Verify user lyrics extraction populates extracted features and only falls back for missing features."""
+        features = {"tempo": 120.0, "energy": 0.25, "mode": 1}
+        market_lyrics = {"word_count": 300.0, "chorus_repetition_count": 3.0, "repetition_ratio": 0.55}
+        train_medians = {"word_count": 280.0, "chorus_repetition_count": 2.5, "punctuation_ratio": 0.05}
+
+        user_lyrics = {
+            "word_count": 420.0,
+            "repetition_ratio": 0.68,
+            "chorus_repetition_count": None,  # Missing: should fallback to market median
+        }
+
+        payload = _build_prediction_payload(
+            features, "VN", market_lyrics, train_medians, user_lyrics_features=user_lyrics
+        )
+
+        assert payload["word_count"] == 420.0, "word_count should use user lyrics value"
+        assert payload["repetition_ratio"] == 0.68, "repetition_ratio should use user lyrics value"
+        assert payload["chorus_repetition_count"] == 3.0, "chorus_repetition_count should fallback to market median (3.0)"
+        assert "_lyrics_provenance" in payload
+        assert payload["_lyrics_provenance"]["word_count"]["source"] == "Trích xuất từ ca từ"
+        assert payload["_lyrics_provenance"]["chorus_repetition_count"]["source"] == "Trung vị thị trường"
+
+
+def test_upload_submits_file_lyrics_and_market_together(monkeypatch):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_file(str(ROOT_DIR / "app/main.py"), default_timeout=90).run()
+    assert not app.exception
+    app.button(key="tab3_predict_btn").click().run()
+    assert any("Hãy chọn tệp âm thanh" in error.value for error in app.error)
+    app.tabs[2].file_uploader[0].upload("song.wav", _generate_synthetic_audio(), "audio/wav")
+    lyrics = "I follow the rhythm\nWe dance in the rain\nI follow the rhythm"
+    app.text_area(key="tab3_lyrics_input").set_value(lyrics)
+    app.selectbox(key="tab3_market_select").select("🇺🇸 Hoa Kỳ")
+    app.button(key="tab3_predict_btn").click().run()
+
+    assert not app.exception
+    assert not app.error
+    _, extracted = app.session_state["tab3_lyrics_extraction"]
+    assert extracted["extraction_status"] == "success"
+    assert extracted["word_count"] == 13
+    [(prediction, sources)] = app.session_state["tab3_predictions"].values()
+    assert prediction["market"] == "US"
+    assert sources["word_count"]["source"] == "Trích xuất từ ca từ"
+    assert {"OLS", "Random Forest"} <= {metric.label for metric in app.tabs[2].metric}
+
+    app.text_area(key="tab3_lyrics_input").set_value("")
+    app.button(key="tab3_predict_btn").click().run()
+    assert not app.exception
+    assert not app.error
+    _, sources = next(
+        result for key, result in app.session_state["tab3_predictions"].items()
+        if key.endswith("_US_nomedia")
+    )
+    assert sources["word_count"]["source"] == "Trung vị thị trường"
+
+    from app.components import tab_upload
+
+    def unreadable_medians():
+        raise OSError("Không đọc được file trung vị")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(tab_upload, "_load_lyrics_medians", unreadable_medians)
+        app.button(key="tab3_predict_btn").click().run()
+    assert not app.exception
+    assert any("Lỗi chuẩn bị đầu vào dự đoán" in error.value for error in app.error)
+    assert not {"OLS", "Random Forest"} & {metric.label for metric in app.tabs[2].metric}
+
+    app.button(key="tab3_predict_btn").click().run()
+    assert not app.error
+    assert {"OLS", "Random Forest"} <= {metric.label for metric in app.tabs[2].metric}
 
 
 if __name__ == "__main__":

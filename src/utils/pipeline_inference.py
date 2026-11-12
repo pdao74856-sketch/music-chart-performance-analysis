@@ -166,7 +166,7 @@ class DualModelPredictor:
             print(f"[Inference] RF predict error: {e}")
             return None
 
-    def predict(self, raw_input: Dict[str, Any]) -> Dict[str, float]:
+    def predict(self, raw_input: Dict[str, Any], *, allow_fallback: bool = True) -> Dict[str, float]:
         """
         Runs simultaneous prediction for both OLS and Random Forest.
         Preserves empirical chart_score domain [-99.0, 100.0].
@@ -177,7 +177,10 @@ class DualModelPredictor:
         ols_val = self.predict_ols(clean_row)
         rf_val = self.predict_rf(clean_row)
 
-        # Domain fallback only if model files are completely missing from disk
+        if not allow_fallback and any(value is None or not np.isfinite(value) for value in (ols_val, rf_val)):
+            raise ValueError("OLS hoặc Random Forest chưa trả về điểm hợp lệ.")
+
+        # Allow existing callers to use the heuristic when a model fails.
         if ols_val is None or rf_val is None:
             energy = float(clean_row.get("energy", 0.238))
             centroid = float(clean_row.get("spectral_centroid", 2225.0))

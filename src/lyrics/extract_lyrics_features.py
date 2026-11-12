@@ -24,12 +24,12 @@ from typing import Any
 try:
     import yaml
 except ImportError as exc:
-    raise SystemExit("Thiếu thư viện PyYAML. Cài bằng: python -m pip install pyyaml") from exc
+    raise ImportError("Thiếu thư viện PyYAML. Cài bằng: python -m pip install pyyaml") from exc
 
 try:
     import regex as unicode_re
 except ImportError as exc:
-    raise SystemExit(
+    raise ImportError(
         "Thiếu thư viện regex (hỗ trợ Unicode \\p{L}). "
         "Cài bằng: python -m pip install regex"
     ) from exc
