@@ -311,6 +311,8 @@ def _compute_rqa_metrics(features: np.ndarray) -> Tuple[float, float, float]:
 def extract_features_for_inference(
     audio_source: Union[str, Path, bytes, BytesIO],
     filename: str = "uploaded_audio.mp3",
+    *,
+    include_waveform: bool = False,
 ) -> Dict[str, Any]:
     """
     Extract exactly 17 standardized Librosa features for inference.
@@ -333,9 +335,19 @@ def extract_features_for_inference(
     duration_analyzed = len(y) / sr
     duration_minutes = duration_analyzed / 60.0
 
-    # 2. Rhythm & Dynamic Intensity
+    # The spectral, chroma, and mel features share the same STFT settings.
+    magnitude = np.abs(librosa.stft(y, n_fft=FRAME_LENGTH, hop_length=HOP_LENGTH))
+    power = magnitude ** 2
+    mel_db = librosa.power_to_db(librosa.feature.melspectrogram(
+        S=power, sr=sr, n_fft=FRAME_LENGTH, hop_length=HOP_LENGTH,
+    ))
+
+    # Beat tracking uses the median envelope, onset detection uses the mean.
+    beat_envelope = librosa.onset.onset_strength(
+        S=mel_db, sr=sr, hop_length=HOP_LENGTH, aggregate=np.median,
+    )
     tempo_val, beat_times = librosa.beat.beat_track(
-        y=y,
+        onset_envelope=beat_envelope,
         sr=sr,
         hop_length=HOP_LENGTH,
         units="time",
@@ -353,8 +365,11 @@ def extract_features_for_inference(
 
     tempo_stability = float(1.0 / (1.0 + beat_interval_variability))
 
+    onset_envelope = librosa.onset.onset_strength(
+        S=mel_db, sr=sr, hop_length=HOP_LENGTH,
+    )
     onset_times = librosa.onset.onset_detect(
-        y=y,
+        onset_envelope=onset_envelope,
         sr=sr,
         hop_length=HOP_LENGTH,
         units="time",
@@ -375,19 +390,22 @@ def extract_features_for_inference(
 
     # 3. Spectral Features
     centroid = librosa.feature.spectral_centroid(
-        y=y,
+        S=magnitude,
         sr=sr,
         n_fft=FRAME_LENGTH,
         hop_length=HOP_LENGTH,
         center=True,
     )[0]
     bandwidth = librosa.feature.spectral_bandwidth(
-        y=y,
+        S=magnitude,
+        centroid=centroid[np.newaxis, :],
         sr=sr,
         n_fft=FRAME_LENGTH,
         hop_length=HOP_LENGTH,
         center=True,
     )[0]
+
+    del magnitude
 
     valid_spectral = np.isfinite(centroid) & np.isfinite(bandwidth)
     spectral_centroid = float(np.mean(centroid[valid_spectral])) if np.any(valid_spectral) else 2200.0
@@ -397,7 +415,7 @@ def extract_features_for_inference(
     try:
         chroma_tonal = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=HOP_LENGTH)
     except Exception:
-        chroma_tonal = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=HOP_LENGTH)
+        chroma_tonal = librosa.feature.chroma_stft(S=power, sr=sr, hop_length=HOP_LENGTH)
 
     key_str, raw_mode, key_conf = _estimate_key_mode(chroma_tonal)
     chord_rate = _estimate_chord_change_rate(y, sr, chroma_tonal)
@@ -407,23 +425,19 @@ def extract_features_for_inference(
 
     # 5. Repetition RQA (Chroma STFT & MFCC matching src/audio/extract_repetition.py)
     chroma_rqa = librosa.feature.chroma_stft(
-        y=y,
+        S=power,
         sr=sr,
         n_fft=FRAME_LENGTH,
         hop_length=HOP_LENGTH,
         n_chroma=N_CHROMA,
     )
+    del power
     chroma_sec = _aggregate_to_seconds(chroma_rqa, sr=sr, hop_length=HOP_LENGTH)
     chroma_norm = _normalize_columns(chroma_sec)
     chroma_det, chroma_mean_p, chroma_longest_p = _compute_rqa_metrics(chroma_norm)
 
-    mfcc = librosa.feature.mfcc(
-        y=y,
-        sr=sr,
-        n_mfcc=N_MFCC,
-        n_fft=FRAME_LENGTH,
-        hop_length=HOP_LENGTH,
-    )
+    mfcc = librosa.feature.mfcc(S=mel_db, sr=sr, n_mfcc=N_MFCC)
+    del mel_db
     mfcc_sec = _aggregate_to_seconds(mfcc, sr=sr, hop_length=HOP_LENGTH)
 
     # Standardize MFCC coefficients across time to prevent lower coefficient dominance
@@ -435,7 +449,7 @@ def extract_features_for_inference(
 
     mfcc_det, mfcc_mean_p, mfcc_longest_p = _compute_rqa_metrics(mfcc_norm)
 
-    return {
+    features = {
         # Core 17 Librosa features (raw full-precision floats for StandardScaler)
         "tempo": float(tempo),
         "onset_rate": float(onset_rate),
@@ -460,3 +474,13 @@ def extract_features_for_inference(
         "raw_mode": raw_mode,
         "filename": filename,
     }
+    if include_waveform:
+        # Keep the positive and negative peaks in at most 1,000 time bins.
+        step = max(1, (len(y) + 999) // 1000)
+        starts = np.arange(0, len(y), step)
+        features["_waveform"] = {
+            "time": (starts / sr).tolist(),
+            "min": np.minimum.reduceat(y, starts).tolist(),
+            "max": np.maximum.reduceat(y, starts).tolist(),
+        }
+    return features

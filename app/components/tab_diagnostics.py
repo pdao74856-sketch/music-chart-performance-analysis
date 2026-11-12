@@ -16,6 +16,10 @@ import json
 from pathlib import Path
 from typing import Optional, Dict, Any
 import pandas as pd
+import plotly.express as px
+
+from app.components.market_position import load_reference_scores
+from src.utils.tier_classifier import EMPIRICAL_CHART_THRESHOLDS, load_acoustic_thresholds
 import streamlit as st
 
 # Setup Root Directory (depth 2 from repo root: app/components/tab_diagnostics.py -> repo root)
@@ -159,6 +163,60 @@ def render_tab_diagnostics():
         index=0,
         help="Lọc kết quả kiểm thử trên toàn bộ mẫu Test (410 dòng) hoặc theo từng thị trường cụ thể."
     )
+
+    try:
+        reference = load_reference_scores()
+    except (OSError, ValueError):
+        st.info("Chưa có dữ liệu dự đoán của tập test.")
+    else:
+        threshold_config = load_acoustic_thresholds()["metadata"]
+        quantile = threshold_config["top22_quantile"]
+        actual_cutoff = EMPIRICAL_CHART_THRESHOLDS["Q3"]
+        scores = reference.assign(
+            shortlisted=reference.groupby("market")["pred_rf"].transform(
+                lambda values: values.ge(values.quantile(quantile))
+            ),
+            actual_tier_1=reference["chart_score_actual"].ge(actual_cutoff),
+        )
+        chart_data = scores if scope == "Overall" else scores[scores["market"] == scope]
+        shortlist = chart_data[chart_data["shortlisted"]]
+        if not shortlist.empty:
+            selected_hits = int(shortlist["actual_tier_1"].sum())
+            all_hits = int(chart_data["actual_tier_1"].sum())
+            selected_col, baseline_col = st.columns(2)
+            selected_col.metric("Tier 1 trong nhóm RF chọn", f"{selected_hits}/{len(shortlist)} · {selected_hits / len(shortlist):.1%}")
+            baseline_col.metric("Tier 1 trong mẫu đang xem", f"{all_hits}/{len(chart_data)} · {all_hits / len(chart_data):.1%}")
+        st.caption("Phân tích thăm dò. Ngưỡng chọn nhóm được tính theo từng thị trường trên tập test.")
+        highlight = st.toggle("Làm nổi nhóm RF chọn", key="diagnostics_highlight_shortlist")
+        color = "market"
+        if highlight:
+            chart_data = chart_data.assign(
+                group=chart_data["shortlisted"].map({True: "Nhóm RF chọn", False: "Phần còn lại"})
+            )
+            color = "group"
+        figure = px.scatter(
+            chart_data, x="pred_rf", y="chart_score_actual", color=color, hover_name="title",
+            hover_data=["market"] if highlight else None,
+            color_discrete_map={"Nhóm RF chọn": "#1760d1", "Phần còn lại": "#b5c1d1"},
+            labels={"pred_rf": "Điểm RF dự đoán", "chart_score_actual": "Điểm BXH thực tế",
+                    "market": "Thị trường", "group": "Shortlist"},
+        )
+        figure.add_hline(
+            y=actual_cutoff, line_dash="dash",
+            annotation_text="Ngưỡng Tier 1 thực tế",
+        )
+        st.plotly_chart(figure, key="diagnostics_rf_test", config={"displayModeBar": False})
+        cases = chart_data[chart_data["title"].isin([
+            "Sally, When The Wine Runs Out", "MASSAGING ME",
+        ]) & chart_data["market"].eq("US")]
+        if not cases.empty:
+            with st.expander("Thử đối chiếu hai bài tại US"):
+                case_table = cases.set_index("title")[["pred_rf", "chart_score_actual"]].rename(
+                    columns={"pred_rf": "Điểm RF dự đoán", "chart_score_actual": "Điểm BXH thực tế"}
+                ).round(1)
+                reveal = st.toggle("Hiện điểm thật", key="diagnostics_reveal_actual")
+                st.table(case_table if reveal else case_table[["Điểm RF dự đoán"]])
+
 
     df_comp = load_test_comparison_data()
     rf_json = load_rf_benchmark_metrics()

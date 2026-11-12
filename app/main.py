@@ -59,7 +59,6 @@ st.markdown(
 
 # Sidebar Information & Status
 with st.sidebar:
-    st.image("https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80", use_container_width=True)
     st.title("Thông Tin Dự Án")
     st.markdown("**Học phần:** ADY201m — AI, Data Science with Python & SQL")
     st.markdown("**Đề tài:** Multimodal Hit Song Analysis")
@@ -69,7 +68,7 @@ with st.sidebar:
     st.subheader("Trạng Thái Kết Nối")
     url, key = get_supabase_credentials()
     if url and key:
-        st.success(f"🟢 Supabase Connected\n({url[:22]}...)")
+        st.info("Đã cấu hình Supabase. Showcase có thể dùng cache local nếu truy vấn thất bại.")
     else:
         st.info("🟡 Chế độ Offline Local Cache\n(Đầy đủ 2,098 bản ghi sạch)")
 

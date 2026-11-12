@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 import warnings
 from io import BytesIO
 from pathlib import Path
@@ -30,6 +31,10 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+
+from app.components.market_position import render_market_position, render_prediction_context
+from app.components.prediction_feedback import render_prediction_feedback
 
 # ── Graceful Streamlit Import (cho phép chạy headless test khi chưa có UI) ──
 try:
@@ -58,6 +63,12 @@ except ImportError:
             n = len(spec) if isinstance(spec, (list, tuple)) else int(spec)
             return [_MockStreamlitContext() for _ in range(n)]
 
+        def form(self, *args, **kwargs):
+            return _MockStreamlitContext()
+
+        def container(self, *args, **kwargs):
+            return _MockStreamlitContext()
+
         def expander(self, *args, **kwargs):
             return _MockStreamlitContext()
 
@@ -66,6 +77,9 @@ except ImportError:
 
         def selectbox(self, label, options, *args, **kwargs):
             return options[0] if options else None
+
+        def text_area(self, label, *args, **kwargs):
+            return ""
 
         def __getattr__(self, name: str):
             return lambda *args, **kwargs: None
@@ -78,7 +92,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 # ── Constants ───────────────────────────────────────────────────────────────
 MAX_FILE_SIZE_MB = 15
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-SUPPORTED_FORMATS = ["mp3", "wav", "flac", "ogg", "m4a"]
+SUPPORTED_FORMATS = ["mp3", "wav", "flac", "ogg"]
 
 MARKET_LABELS = {"VN": "🇻🇳 Việt Nam", "US": "🇺🇸 Hoa Kỳ", "KR": "🇰🇷 Hàn Quốc"}
 MARKET_CODES = {"🇻🇳 Việt Nam": "VN", "🇺🇸 Hoa Kỳ": "US", "🇰🇷 Hàn Quốc": "KR"}
@@ -168,32 +182,19 @@ def _extract_cached(file_sha256: str, _audio_bytes: bytes) -> Tuple[Dict[str, An
     (features_dict, error_message)
         error_message rỗng nếu thành công.
     """
-    import time
-    import tracemalloc
-    from src.features.audio_extractor import extract_features_for_inference  # type: ignore
-
-    was_tracing = tracemalloc.is_tracing()
-    if not was_tracing:
-        tracemalloc.start()
-    else:
-        tracemalloc.reset_peak()
-
     t0 = time.perf_counter()
+    print("[Upload] Đang giải mã và trích xuất audio...", flush=True)
     try:
-        features = extract_features_for_inference(BytesIO(_audio_bytes))
-        t1 = time.perf_counter()
-        _, peak_b = tracemalloc.get_traced_memory()
+        from src.features.audio_extractor import extract_features_for_inference
 
-        features["_dsp_latency_sec"] = float(t1 - t0)
-        features["_dsp_peak_ram_mb"] = float(peak_b / (1024 * 1024))
+        features = extract_features_for_inference(BytesIO(_audio_bytes), include_waveform=True)
+        features["_dsp_latency_sec"] = time.perf_counter() - t0
+        print(f"[Upload] Audio xong sau {features['_dsp_latency_sec']:.2f}s", flush=True)
         return features, ""
     except ValueError as exc:
         return {}, str(exc)
     except Exception as exc:  # noqa: BLE001
         return {}, f"Lỗi không mong đợi khi trích xuất âm thanh: {exc}"
-    finally:
-        if not was_tracing and tracemalloc.is_tracing():
-            tracemalloc.stop()
 
 
 @st.cache_data(show_spinner=False)
@@ -229,11 +230,12 @@ def _build_prediction_payload(
     market: str,
     lyrics_medians: Dict[str, float],
     train_medians: Dict[str, float],
+    user_lyrics_features: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Ghép vector đặc trưng chuẩn bị cho DualModelPredictor:
     - 17 đặc trưng âm học thô từ audio_extractor
-    - 6 biến ca từ fallback từ trung vị thị trường (TV3)
+    - 6 biến ca từ: ưu tiên trích xuất từ ca từ người dùng nhập; chỉ biến nào thiếu mới dùng trung vị thị trường
     - release_year mặc định 2024
     - market theo lựa chọn người dùng (VN/US/KR)
     """
@@ -241,13 +243,36 @@ def _build_prediction_payload(
         "word_count", "repetition_ratio", "avg_word_length",
         "line_count", "chorus_repetition_count", "punctuation_ratio",
     ]
-    payload = dict(features)
-    for col in lyrics_cols:
-        val = lyrics_medians.get(col) if lyrics_medians else None
-        if val is None:
-            val = train_medians.get(col, 0.0)
-        payload[col] = float(val)
+    payload = {key: value for key, value in features.items() if not key.startswith("_")}
+    lyrics_provenance: Dict[str, Dict[str, Any]] = {}
 
+    for col in lyrics_cols:
+        val = None
+        source = "Trung vị thị trường"
+        if user_lyrics_features and user_lyrics_features.get(col) is not None:
+            try:
+                candidate = float(user_lyrics_features[col])
+                if np.isfinite(candidate):
+                    val = candidate
+                    source = "Trích xuất từ ca từ"
+            except (ValueError, TypeError):
+                val = None
+
+        if val is None:
+            val = lyrics_medians.get(col) if lyrics_medians else None
+            if val is None:
+                val = train_medians.get(col, 0.0)
+                source = "Trung vị tập huấn luyện" if col in train_medians else "Mặc định"
+            else:
+                source = "Trung vị thị trường"
+
+        payload[col] = float(val)
+        lyrics_provenance[col] = {
+            "value": float(val),
+            "source": source,
+        }
+
+    payload["_lyrics_provenance"] = lyrics_provenance
     payload["market"] = str(market).upper()
     payload["release_year"] = 2024.0
     return payload
@@ -271,7 +296,7 @@ def _predict_dual_models(payload: Dict[str, Any]) -> Tuple[Optional[Dict[str, fl
             warnings.simplefilter("ignore")
             predictor = get_predictor()
 
-        res = predictor.predict(payload)
+        res = predictor.predict(payload, allow_fallback=False)
         return res, ""
     except Exception as exc:  # noqa: BLE001
         return None, f"Lỗi dự đoán từ pipeline inference: {exc}"
@@ -334,67 +359,20 @@ def _render_highlight_metrics(features: Dict[str, Any]) -> None:
     col4.metric("🎹 Điệu tính & Giọng", full_key)
 
 
-def _render_prediction_result(pred: Dict[str, float], market_label: str) -> None:
-    """
-    Hiển thị kết quả dự đoán Dual-Model: OLS Model 3 & Random Forest Model 4.
-    Phân tầng dựa trên phân vị thực nghiệm của biến mục tiêu chart_score:
-      - Q3 (Top 25% Bảng xếp hạng): chart_score >= 37.58
-      - Median (Trung vị thực nghiệm): chart_score = 15.16
-      - Q1 (Phân vị 25% dưới): chart_score = -11.93
-    """
-    ols_score = pred.get("ols_prediction", 0.0)
-    rf_score = pred.get("rf_prediction", 0.0)
-    ensemble = pred.get("ensemble_prediction", 0.0)
-
-    # Đánh giá phân tầng dựa trên phân vị thực nghiệm của chart_score
-    if ensemble >= 37.58:
-        tier, tier_color, tier_emoji = "Top 25% Bảng Xếp Hạng (Tiềm năng cao - Tier 1)", "success", "🔥"
-    elif ensemble >= 15.16:
-        tier, tier_color, tier_emoji = "Trên Mức Trung Vị (Tiềm năng khá - Tier 2)", "warning", "⚡"
-    elif ensemble >= -11.93:
-        tier, tier_color, tier_emoji = "Khoảng Dưới Trung Vị (Tiềm năng trung bình - Tier 3)", "info", "📊"
-    else:
-        tier, tier_color, tier_emoji = "Đáy Phân Phối (Cần tối ưu mạnh phối khí - Tier 4)", "error", "📉"
-
-    st.subheader("🎯 Kết Quả Dự Đoán Song Hành (Dual-Model)")
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric(
-        "📈 Hồi quy Tuyến tính OLS (Model 3)",
-        f"{ols_score:.1f} điểm",
-        help="Mô hình chuẩn kinh tế lượng: giải thích ảnh hưởng biên và tương tác thị trường (Thang điểm chuẩn hóa [-99, +100]).",
-    )
-    c2.metric(
-        "🌲 Rừng Ngẫu Nhiên (Model 4 RF)",
-        f"{rf_score:.1f} điểm",
-        help="Mô hình phi tuyến phi tham số: đo lường cấu trúc tương tác phi tuyến tính (Thang điểm chuẩn hóa [-99, +100]).",
-    )
-    c3.metric(
-        "⚖️ Điểm Tổ Hợp (Ensemble)",
-        f"{ensemble:.1f} điểm",
-        help="Điểm bình quân trọng số 50-50 giữa OLS và Random Forest (Thang điểm chuẩn hóa [-99, +100]).",
-    )
-
-    if tier_color == "success":
-        st.success(f"{tier_emoji} **{tier}** — Điểm tổ hợp vượt ngưỡng phân vị 75% ($Q_3 = 37.58$). Cấu trúc âm học mang đặc trưng tích cực tương đồng với nhóm dẫn đầu bảng xếp hạng.")
-    elif tier_color == "warning":
-        st.warning(f"{tier_emoji} **{tier}** — Điểm tổ hợp nằm trong dải trên trung vị ($15.16 \\le \\text{{Score}} < 37.58$). Cấu trúc âm học ổn định, đáp ứng thị hiếu chung.")
-    elif tier_color == "info":
-        st.info(f"{tier_emoji} **{tier}** — Điểm tổ hợp nằm trong dải dưới trung vị ($-11.93 \\le \\text{{Score}} < 15.16$). Cấu trúc âm học chưa tạo được sự đột phá thương mại.")
-    else:
-        st.error(f"{tier_emoji} **{tier}** — Điểm tổ hợp thuộc nhóm 25% thấp nhất ($< -11.93$). Cần xem xét lại các chỉ số năng lượng, âm sắc hoặc nhịp điệu.")
-
-    st.caption(
-        "📌 **Lưu ý phương pháp luận & Giới hạn:**\n"
-        "- **Phân tầng tương đối (Relative Benchmark):** Các ngưỡng $Q_1, \\text{Median}, Q_3$ được tính toán trên phân phối điểm thực tế của 2,098 ca khúc. "
-        "Do điểm dự báo tổ hợp (Ensemble) có xu hướng co cụm về trung vị (*Shrinkage to Mean*), việc phân tầng mang tính chất **so sánh tương đối về cấu trúc âm học**, "
-        "không phải dự báo chắc chắn về thứ hạng thực tế trên thị trường.\n"
-        "- **Fallback Ca từ:** Vì bài hát tải lên chưa có lời, hệ thống đã nạp **trung vị 6 biến ca từ của thị trường** "
-        f"({market_label}) từ tệp `data/processed/lyrics_market_medians.json` (do TV3 bàn giao trên tập Train n=1,685).\n"
-        "- **Năng lực giải thích:** Mô hình OLS Model 3 giải thích khoảng 3.4% – 6.6% biến thiên "
-        "($R^2_{\\text{test}} = 3.40\\%$, $R^2_{\\text{train}} = 6.56\\%$), trong khi Random Forest Model 4 đạt $R^2_{\\text{test}} \\approx 6.86\\%$ toàn cục.\n"
-        "- **Khuyến nghị sử dụng:** Điểm số phản ánh khuynh hướng âm học khách quan, không thể đo lường các yếu tố ngoại sinh (marketing, playlisting, hiệu ứng viral)."
-    )
+def _render_prediction_result(
+    pred: Dict[str, float],
+    market_label: str,
+    market_code: str = "VN",
+) -> None:
+    st.subheader(f"Kết quả dự đoán · {market_label}")
+    render_market_position(st, pred["rf_prediction"], market_code, "upload_market_position", explain=True)
+    render_prediction_context(st)
+    with st.expander("Xem điểm của hai mô hình"):
+        st.caption("Năm phát hành giả định: 2024.")
+        ols, rf, ensemble = st.columns(3)
+        ols.metric("OLS", f"{pred['ols_prediction']:.1f}")
+        rf.metric("Random Forest", f"{pred['rf_prediction']:.1f}")
+        ensemble.metric("Trung bình hai mô hình", f"{pred['ensemble_prediction']:.1f}")
 
 
 # ── Main render function ──────────────────────────────────────────────────────
@@ -413,22 +391,37 @@ def render() -> None:
     left_col, right_col = st.columns([1, 2], gap="large")
 
     with left_col:
-        st.subheader("📂 Chọn file âm thanh")
-        uploaded = st.file_uploader(
-            label="Kéo thả hoặc chọn file nhạc",
-            type=SUPPORTED_FORMATS,
-            help=f"Hỗ trợ: {', '.join(f'.{e}' for e in SUPPORTED_FORMATS)} | Dung lượng tối đa {MAX_FILE_SIZE_MB} MB",
-            key="tab3_uploader",
-        )
+        with st.form("tab3_upload_form", enter_to_submit=False, border=False):
+            st.subheader("📂 Chọn file âm thanh")
+            uploaded = st.file_uploader(
+                label="Kéo thả hoặc chọn file nhạc",
+                type=SUPPORTED_FORMATS,
+                help=f"Hỗ trợ: {', '.join(f'.{e}' for e in SUPPORTED_FORMATS)} | Dung lượng tối đa {MAX_FILE_SIZE_MB} MB",
+                key="tab3_uploader",
+                max_upload_size=MAX_FILE_SIZE_MB,
+            )
 
-        st.subheader("🌏 Thị trường đánh giá")
-        market_label = st.selectbox(
-            "Chọn thị trường mục tiêu",
-            options=list(MARKET_CODES.keys()),
-            key="tab3_market_select",
-            help="Thị trường quyết định vector dummy, hệ số độ dốc tương tác và bộ trung vị ca từ.",
-        )
-        market_code = MARKET_CODES.get(market_label, "VN")
+            st.subheader("🌏 Thị trường đánh giá")
+            market_label = st.selectbox(
+                "Chọn thị trường mục tiêu",
+                options=list(MARKET_CODES.keys()),
+                key="tab3_market_select",
+                help="Thị trường quyết định vector dummy, hệ số độ dốc tương tác và bộ trung vị ca từ.",
+            )
+            market_code = MARKET_CODES.get(market_label, "VN")
+
+            st.subheader("📝 Ca Từ / Lyrics (Tùy chọn)")
+            user_lyrics_text = st.text_area(
+                label="Dán lời bài hát nếu có:",
+                placeholder="Dán lời bài hát tại đây.",
+                height=140,
+                key="tab3_lyrics_input",
+                help="Để trống nếu chưa có lời. App sẽ dùng trung vị ca từ của thị trường đã chọn.",
+            )
+
+            predict_btn = st.form_submit_button(
+                "Phân tích và dự đoán", key="tab3_predict_btn", type="primary", width="stretch"
+            )
 
         with st.expander("ℹ️ Tiêu chuẩn Kỹ thuật Phân hệ", expanded=False):
             st.markdown(
@@ -442,14 +435,23 @@ def render() -> None:
             )
 
     with right_col:
+        if predict_btn:
+            print(f"[Upload] Đã nhận yêu cầu ({market_code}), có tệp: {uploaded is not None}.", flush=True)
         if uploaded is None:
             st.session_state.pop("tab3_predictions", None)
             st.session_state.pop("tab3_current_file_sha", None)
-            st.info("⬅️ Hãy kéo thả hoặc chọn một tệp âm thanh ở cột bên trái để bắt đầu phân tích.")
+            st.session_state.pop("tab3_lyrics_extraction", None)
+            if predict_btn:
+                st.error("Hãy chọn tệp âm thanh trước khi bấm Phân tích và dự đoán.")
+            else:
+                st.info("Chọn tệp âm thanh rồi bấm **Phân tích và dự đoán**.")
             return
 
         file_bytes = uploaded.getvalue()
         file_size_mb = len(file_bytes) / (1024 * 1024)
+        if not file_bytes:
+            st.error("Tệp âm thanh rỗng. Hãy chọn một tệp khác.")
+            return
 
         if len(file_bytes) > MAX_FILE_SIZE_BYTES:
             st.error(
@@ -474,15 +476,12 @@ def render() -> None:
                 )
 
         st.success(f"✅ Đã nạp tệp thành công: **{uploaded.name}** ({file_size_mb:.2f} MB)")
-        audio_ext = uploaded.name.split(".")[-1].lower() if "." in uploaded.name else "mp3"
-        audio_mime = "audio/mp4" if audio_ext == "m4a" else f"audio/{audio_ext}"
-        st.audio(file_bytes, format=audio_mime)
 
         file_sha = _sha256(file_bytes)
         cache_key = f"tab3_features_{file_sha}"
 
         if cache_key not in st.session_state:
-            with st.spinner("🔬 Đang phân tích tín hiệu âm thanh Librosa... (Lần đầu có thể mất 15–20s do Numba JIT compile)"):
+            with st.spinner("🔬 Đang phân tích tín hiệu âm thanh Librosa... (lần đầu có thêm bước khởi tạo)"):
                 features, err = _extract_cached(file_sha, file_bytes)
             st.session_state[cache_key] = (features, err)
         else:
@@ -501,39 +500,42 @@ def render() -> None:
             st.error("❌ Quá trình trích xuất không trả về kết quả.")
             return
 
-        duration = features.get("duration_analyzed_seconds", 0)
-        key_name = features.get("key", "N/A")
-        if est_duration is not None and est_duration > 360.0:
-            duration_desc = f"**{duration:.1f} giây** (trích đoạn 6 phút đầu từ tệp gốc {est_duration:.1f}s)"
-        else:
-            duration_desc = f"**{duration:.1f} giây**"
+        user_lyrics_features = None
+        lyrics_text = user_lyrics_text.strip()
+        has_user_lyrics = bool(lyrics_text)
+        lyrics_hash = hashlib.sha256(lyrics_text.encode("utf-8")).hexdigest() if has_user_lyrics else "nomedia"
+        lyrics_key = (file_sha, lyrics_hash)
+        previous_lyrics = st.session_state.get("tab3_lyrics_extraction")
+        same_lyrics = previous_lyrics is not None and previous_lyrics[0] == lyrics_key
 
-        lat = features.get("_dsp_latency_sec", 0.0)
-        ram = features.get("_dsp_peak_ram_mb", 0.0)
-        telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s** | 💾 RAM đỉnh DSP (tracemalloc): **~{ram:.1f} MB**" if lat > 0 else ""
+        if has_user_lyrics:
+            try:
+                if same_lyrics:
+                    extracted_lyrics = previous_lyrics[1]
+                else:
+                    with st.spinner("Đang trích xuất đặc trưng ca từ..."):
+                        start = time.perf_counter()
+                        print("[Upload] Đang trích xuất ca từ...", flush=True)
+                        from src.features.lyrics_processor import process_lyrics_text
 
-        st.caption(
-            f"⏱️ Thời lượng giải mã: {duration_desc} | "
-            f"🎼 Điệu tính ước lượng: **{key_name}** {'Major 🎵' if float(features.get('mode', 1)) >= 0.5 else 'Minor 🎶'}"
-            f"{telemetry}"
-        )
+                        extracted_lyrics = process_lyrics_text(file_sha, lyrics_text)
+                        print(f"[Upload] Ca từ xong sau {time.perf_counter() - start:.2f}s", flush=True)
+                    st.session_state["tab3_lyrics_extraction"] = (lyrics_key, extracted_lyrics)
+                if extracted_lyrics.get("extraction_status") == "success":
+                    user_lyrics_features = extracted_lyrics
+                else:
+                    st.warning(f"⚠️ Trích xuất ca từ không thành công ({extracted_lyrics.get('error_reason', 'Không nhận diện được từ')}). Hệ thống tự động sử dụng trung vị thị trường.")
+            except Exception as e:
+                print(f"[Upload] Lỗi trích xuất ca từ ({type(e).__name__}): {e}", flush=True)
+                st.warning(f"⚠️ Không thể trích xuất đặc trưng ca từ: {e}. Hệ thống tự động sử dụng trung vị thị trường.")
+        elif not has_user_lyrics:
+            st.info(
+                f"ℹ️ **Cơ chế Fallback Ca từ:** Tệp âm thanh chưa kèm lời ca. "
+                f"Hệ thống tự động nạp trung vị 6 đặc trưng ca từ của **{market_label}** từ `lyrics_market_medians.json` "
+                "để tạo vector đầu vào hoàn chỉnh cho mô hình."
+            )
 
-        st.subheader("📊 Tiêu Điểm Âm Học")
-        _render_highlight_metrics(features)
-
-        st.subheader("📋 Bảng Thông Số 17 Đặc Trưng Âm Học (Librosa DSP)")
-        _render_feature_table(features)
-
-        st.markdown("---")
-
-        st.subheader(f"🎯 Dự Đoán Thành Tích Tại Thị Trường {market_label}")
-        st.info(
-            f"ℹ️ **Cơ chế Fallback Ca từ:** Tệp âm thanh tải lên chưa có lời. "
-            f"Hệ thống sẽ nạp trung vị 6 đặc trưng ca từ của **{market_label}** từ `lyrics_market_medians.json` "
-            "để tạo vector đầu vào hoàn chỉnh cho mô hình."
-        )
-
-        # Đồng bộ hóa bộ nhớ đệm dự đoán theo tệp và thị trường
+        # Đồng bộ hóa bộ nhớ đệm dự đoán theo tệp, thị trường và ca từ
         if "tab3_predictions" not in st.session_state:
             st.session_state["tab3_predictions"] = {}
 
@@ -542,41 +544,125 @@ def render() -> None:
             st.session_state["tab3_current_file_sha"] = file_sha
             st.session_state["tab3_predictions"] = {}
 
-        pred_key = f"{file_sha}_{market_code}"
+        pred_key = f"{file_sha}_{market_code}_{lyrics_hash}"
 
-        predict_btn = st.button(
-            f"🔮 Chạy Mô Hình Dự Đoán Song Hành ({market_label})",
-            key="tab3_predict_btn",
-            type="primary",
-        )
-
+        pred_err = ""
         if predict_btn:
-            lyrics_medians_all = _load_lyrics_medians()
-            train_medians = _load_train_medians()
-            market_medians = lyrics_medians_all.get(market_code, {})
-
-            if not market_medians:
-                st.warning(
-                    f"⚠️ Không tìm thấy bảng trung vị riêng cho thị trường {market_code}. "
-                    "Hệ thống tự động sử dụng trung vị chung toàn tập huấn luyện."
-                )
-
-            payload = _build_prediction_payload(features, market_code, market_medians, train_medians)
-
-            with st.spinner("⚙️ Đang tính toán qua OLS Model 3 & Random Forest Model 4..."):
-                pred_res, pred_err = _predict_dual_models(payload)
+            st.session_state["tab3_predictions"].pop(pred_key, None)
+            with st.spinner("⚙️ Đang chuẩn bị đầu vào và chạy OLS & Random Forest..."):
+                try:
+                    market_medians = _load_lyrics_medians().get(market_code, {})
+                    train_medians = _load_train_medians()
+                    if not market_medians:
+                        st.warning(
+                            f"⚠️ Thiếu bảng trung vị {market_code}. "
+                            "Hệ thống dùng trung vị tập huấn luyện cho các biến ca từ còn thiếu."
+                        )
+                    payload = _build_prediction_payload(
+                        features, market_code, market_medians, train_medians,
+                        user_lyrics_features=user_lyrics_features,
+                    )
+                except (OSError, ValueError, TypeError, AttributeError) as exc:
+                    pred_err = f"Lỗi chuẩn bị đầu vào dự đoán: {exc}"
+                else:
+                    start = time.perf_counter()
+                    print("[Upload] Đang chạy OLS và Random Forest...", flush=True)
+                    pred_res, pred_err = _predict_dual_models(payload)
+                    if pred_res is not None and not pred_err:
+                        st.session_state["tab3_predictions"][pred_key] = (pred_res, payload["_lyrics_provenance"])
+                        print(f"[Upload] Dự đoán xong sau {time.perf_counter() - start:.2f}s", flush=True)
 
             if pred_err:
+                print(f"[Upload] {pred_err}", flush=True)
                 st.error(pred_err)
-            elif pred_res is not None:
-                st.session_state["tab3_predictions"][pred_key] = pred_res
 
         # Hiển thị kết quả tương ứng chính xác với thị trường hiện tại
-        if pred_key in st.session_state["tab3_predictions"]:
-            current_pred = st.session_state["tab3_predictions"][pred_key]
-            _render_prediction_result(current_pred, market_label)
+        cached_prediction = st.session_state["tab3_predictions"].get(pred_key)
+        if cached_prediction is not None:
+            current_pred, provenance = cached_prediction
+            _render_prediction_result(current_pred, market_label, market_code=market_code)
+            extracted_count = sum(item["source"] == "Trích xuất từ ca từ" for item in provenance.values())
+            if 0 < extracted_count < len(provenance):
+                st.caption(f"{len(provenance) - extracted_count} biến ca từ dùng giá trị thay thế.")
+        elif not pred_err:
+            st.info(f"💡 Bấm **Phân tích và dự đoán** ở cột bên trái để tính điểm tại **{market_label}**.")
+
+        st.markdown("---")
+        st.subheader("Âm học")
+        audio_ext = uploaded.name.split(".")[-1].lower() if "." in uploaded.name else "mp3"
+        audio_mime = "audio/mpeg" if audio_ext == "mp3" else f"audio/{audio_ext}"
+        st.audio(file_bytes, format=audio_mime)
+
+        waveform = features.get("_waveform")
+        if waveform:
+            figure = go.Figure()
+            figure.add_scatter(x=waveform["time"], y=waveform["min"], line={"width": 0}, hoverinfo="skip")
+            figure.add_scatter(
+                x=waveform["time"], y=waveform["max"], line={"width": 0},
+                fill="tonexty", fillcolor="#367be8", hoverinfo="skip",
+            )
+            figure.update_layout(
+                template="plotly_white", height=155, showlegend=False,
+                xaxis_title="Thời gian (giây)", yaxis={"visible": False},
+                margin={"l": 0, "r": 0, "t": 8, "b": 0},
+            )
+            st.plotly_chart(figure, key="upload_waveform", config={"displayModeBar": False})
+
+        duration = features.get("duration_analyzed_seconds", 0)
+        key_name = features.get("key", "N/A")
+        if est_duration is not None and est_duration > 360.0:
+            duration_desc = f"**{duration:.1f} giây** (trích đoạn 6 phút đầu từ tệp gốc {est_duration:.1f}s)"
         else:
-            st.info(f"💡 Nhấn nút trên để tính toán dự đoán điểm số tại **{market_label}**.")
+            duration_desc = f"**{duration:.1f} giây**"
+
+        lat = features.get("_dsp_latency_sec", 0.0)
+        telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s**" if lat > 0 else ""
+
+        st.caption(
+            f"⏱️ Thời lượng giải mã: {duration_desc} | "
+            f"🎼 Điệu tính ước lượng: **{key_name}** {'Major 🎵' if float(features.get('mode', 1)) >= 0.5 else 'Minor 🎶'}"
+            f"{telemetry}"
+        )
+
+        _render_highlight_metrics(features)
+
+        with st.expander("Xem 17 đặc trưng âm học"):
+            _render_feature_table(features)
+
+        if user_lyrics_features is not None or cached_prediction is not None:
+            st.subheader("Ca từ")
+        if user_lyrics_features is not None:
+            with st.expander("📝 Phân Tích & Trích Xuất Đặc Trưng Ca Từ (Lyrics NLP)", expanded=False):
+                wc = user_lyrics_features.get("word_count")
+                lc = user_lyrics_features.get("line_count")
+                rep = user_lyrics_features.get("repetition_ratio")
+                awl = user_lyrics_features.get("avg_word_length")
+                ch = user_lyrics_features.get("chorus_repetition_count")
+                pq = user_lyrics_features.get("punctuation_ratio")
+
+                lc1, lc2, lc3 = st.columns(3)
+                lc1.metric("Số từ (Word Count)", f"{int(wc)}" if wc is not None else "N/A")
+                lc2.metric("Số dòng (Line Count)", f"{int(lc)}" if lc is not None else "N/A")
+                lc3.metric("Tỷ lệ lặp (Repetition)", f"{rep:.3f}" if rep is not None else "N/A")
+
+                ch_desc = f"{int(ch)}" if ch is not None else "Không xác định (Dùng trung vị)"
+                awl_desc = f"{awl:.2f} ký tự" if awl is not None else "Không xác định"
+                pq_desc = f"{pq:.4f}" if pq is not None else "Không xác định"
+                st.caption(
+                    f"Độ dài từ TB: **{awl_desc}** | "
+                    f"Lần lặp điệp khúc: **{ch_desc}** | "
+                    f"Tỷ lệ dấu câu: **{pq_desc}**"
+                )
+        if cached_prediction is not None:
+            with st.expander("Xem nguồn dữ liệu ca từ"):
+                st.caption(
+                    f"Trích xuất từ lời nhập: {extracted_count}/{len(provenance)} biến. "
+                    f"Dùng giá trị thay thế: {len(provenance) - extracted_count} biến."
+                )
+                st.table(pd.DataFrame.from_dict(provenance, orient="index").rename(
+                    columns={"value": "Giá trị", "source": "Nguồn"}
+                ))
+            render_prediction_feedback(st, "upload")
 
 
 # Alias to conform with team-wide naming conventions (e.g. render_tab_diagnostics)

@@ -31,3 +31,6 @@ models/*.pkl
 !models/mlr_pipeline.pkl
 # Processed large files
 data/processed/audio_*.csv
+
+# Local usability feedback
+/data/feedback.sqlite3*
