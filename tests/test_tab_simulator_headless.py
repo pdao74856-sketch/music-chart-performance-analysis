@@ -18,6 +18,7 @@ def test_tab_simulator_render_headless_default(simulator):
     assert [m.label for m in simulator.metric] == ["Việt Nam", "Hoa Kỳ", "Hàn Quốc"]
     assert [m.value for m in simulator.metric] == ["Top ≈21%", "Top ≈32%", "Top ≈26%"]
     assert len(simulator.get("plotly_chart")) == 3
+    assert any("Mỗi thị trường có mẫu tham chiếu riêng" in item.value for item in simulator.info)
 
 
 def test_tab_simulator_render_headless_submitted(simulator):

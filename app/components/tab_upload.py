@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from app.components.market_position import render_market_position
+from app.components.market_position import render_market_position, render_prediction_context
 from app.components.prediction_feedback import render_prediction_feedback
 
 # ── Graceful Streamlit Import (cho phép chạy headless test khi chưa có UI) ──
@@ -365,9 +365,10 @@ def _render_prediction_result(
     market_code: str = "VN",
 ) -> None:
     st.subheader(f"Kết quả dự đoán · {market_label}")
-    render_market_position(st, pred["rf_prediction"], market_code, "upload_market_position")
-    st.caption("Top X% là vị trí ước tính của điểm RF trong mẫu tham chiếu của thị trường. Năm phát hành giả định: 2024.")
+    render_market_position(st, pred["rf_prediction"], market_code, "upload_market_position", explain=True)
+    render_prediction_context(st)
     with st.expander("Xem điểm của hai mô hình"):
+        st.caption("Năm phát hành giả định: 2024.")
         ols, rf, ensemble = st.columns(3)
         ols.metric("OLS", f"{pred['ols_prediction']:.1f}")
         rf.metric("Random Forest", f"{pred['rf_prediction']:.1f}")
@@ -475,9 +476,6 @@ def render() -> None:
                 )
 
         st.success(f"✅ Đã nạp tệp thành công: **{uploaded.name}** ({file_size_mb:.2f} MB)")
-        audio_ext = uploaded.name.split(".")[-1].lower() if "." in uploaded.name else "mp3"
-        audio_mime = "audio/mpeg" if audio_ext == "mp3" else f"audio/{audio_ext}"
-        st.audio(file_bytes, format=audio_mime)
 
         file_sha = _sha256(file_bytes)
         cache_key = f"tab3_features_{file_sha}"
@@ -502,10 +500,6 @@ def render() -> None:
             st.error("❌ Quá trình trích xuất không trả về kết quả.")
             return
 
-        audio_details = st.container()
-
-        st.subheader(f"🎯 Dự Đoán Thành Tích Tại Thị Trường {market_label}")
-
         user_lyrics_features = None
         lyrics_text = user_lyrics_text.strip()
         has_user_lyrics = bool(lyrics_text)
@@ -529,28 +523,6 @@ def render() -> None:
                     st.session_state["tab3_lyrics_extraction"] = (lyrics_key, extracted_lyrics)
                 if extracted_lyrics.get("extraction_status") == "success":
                     user_lyrics_features = extracted_lyrics
-                    st.success("✅ Đã đọc lời bài hát.")
-                    with st.expander("📝 Phân Tích & Trích Xuất Đặc Trưng Ca Từ (Lyrics NLP)", expanded=False):
-                        wc = user_lyrics_features.get("word_count")
-                        lc = user_lyrics_features.get("line_count")
-                        rep = user_lyrics_features.get("repetition_ratio")
-                        awl = user_lyrics_features.get("avg_word_length")
-                        ch = user_lyrics_features.get("chorus_repetition_count")
-                        pq = user_lyrics_features.get("punctuation_ratio")
-
-                        lc1, lc2, lc3 = st.columns(3)
-                        lc1.metric("Số từ (Word Count)", f"{int(wc)}" if wc is not None else "N/A")
-                        lc2.metric("Số dòng (Line Count)", f"{int(lc)}" if lc is not None else "N/A")
-                        lc3.metric("Tỷ lệ lặp (Repetition)", f"{rep:.3f}" if rep is not None else "N/A")
-
-                        ch_desc = f"{int(ch)}" if ch is not None else "Không xác định (Dùng trung vị)"
-                        awl_desc = f"{awl:.2f} ký tự" if awl is not None else "Không xác định"
-                        pq_desc = f"{pq:.4f}" if pq is not None else "Không xác định"
-                        st.caption(
-                            f"Độ dài từ TB: **{awl_desc}** | "
-                            f"Lần lặp điệp khúc: **{ch_desc}** | "
-                            f"Tỷ lệ dấu câu: **{pq_desc}**"
-                        )
                 else:
                     st.warning(f"⚠️ Trích xuất ca từ không thành công ({extracted_lyrics.get('error_reason', 'Không nhận diện được từ')}). Hệ thống tự động sử dụng trung vị thị trường.")
             except Exception as e:
@@ -605,58 +577,92 @@ def render() -> None:
                 st.error(pred_err)
 
         # Hiển thị kết quả tương ứng chính xác với thị trường hiện tại
-        if pred_key in st.session_state["tab3_predictions"]:
-            current_pred, provenance = st.session_state["tab3_predictions"][pred_key]
-            if any(item["source"] != "Trích xuất từ ca từ" for item in provenance.values()):
-                st.caption("Một số đầu vào ca từ dùng giá trị thay thế.")
+        cached_prediction = st.session_state["tab3_predictions"].get(pred_key)
+        if cached_prediction is not None:
+            current_pred, provenance = cached_prediction
             _render_prediction_result(current_pred, market_label, market_code=market_code)
+            extracted_count = sum(item["source"] == "Trích xuất từ ca từ" for item in provenance.values())
+            if 0 < extracted_count < len(provenance):
+                st.caption(f"{len(provenance) - extracted_count} biến ca từ dùng giá trị thay thế.")
+        elif not pred_err:
+            st.info(f"💡 Bấm **Phân tích và dự đoán** ở cột bên trái để tính điểm tại **{market_label}**.")
+
+        st.markdown("---")
+        st.subheader("Âm học")
+        audio_ext = uploaded.name.split(".")[-1].lower() if "." in uploaded.name else "mp3"
+        audio_mime = "audio/mpeg" if audio_ext == "mp3" else f"audio/{audio_ext}"
+        st.audio(file_bytes, format=audio_mime)
+
+        waveform = features.get("_waveform")
+        if waveform:
+            figure = go.Figure()
+            figure.add_scatter(x=waveform["time"], y=waveform["min"], line={"width": 0}, hoverinfo="skip")
+            figure.add_scatter(
+                x=waveform["time"], y=waveform["max"], line={"width": 0},
+                fill="tonexty", fillcolor="#367be8", hoverinfo="skip",
+            )
+            figure.update_layout(
+                template="plotly_white", height=155, showlegend=False,
+                xaxis_title="Thời gian (giây)", yaxis={"visible": False},
+                margin={"l": 0, "r": 0, "t": 8, "b": 0},
+            )
+            st.plotly_chart(figure, key="upload_waveform", config={"displayModeBar": False})
+
+        duration = features.get("duration_analyzed_seconds", 0)
+        key_name = features.get("key", "N/A")
+        if est_duration is not None and est_duration > 360.0:
+            duration_desc = f"**{duration:.1f} giây** (trích đoạn 6 phút đầu từ tệp gốc {est_duration:.1f}s)"
+        else:
+            duration_desc = f"**{duration:.1f} giây**"
+
+        lat = features.get("_dsp_latency_sec", 0.0)
+        telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s**" if lat > 0 else ""
+
+        st.caption(
+            f"⏱️ Thời lượng giải mã: {duration_desc} | "
+            f"🎼 Điệu tính ước lượng: **{key_name}** {'Major 🎵' if float(features.get('mode', 1)) >= 0.5 else 'Minor 🎶'}"
+            f"{telemetry}"
+        )
+
+        _render_highlight_metrics(features)
+
+        with st.expander("Xem 17 đặc trưng âm học"):
+            _render_feature_table(features)
+
+        if user_lyrics_features is not None or cached_prediction is not None:
+            st.subheader("Ca từ")
+        if user_lyrics_features is not None:
+            with st.expander("📝 Phân Tích & Trích Xuất Đặc Trưng Ca Từ (Lyrics NLP)", expanded=False):
+                wc = user_lyrics_features.get("word_count")
+                lc = user_lyrics_features.get("line_count")
+                rep = user_lyrics_features.get("repetition_ratio")
+                awl = user_lyrics_features.get("avg_word_length")
+                ch = user_lyrics_features.get("chorus_repetition_count")
+                pq = user_lyrics_features.get("punctuation_ratio")
+
+                lc1, lc2, lc3 = st.columns(3)
+                lc1.metric("Số từ (Word Count)", f"{int(wc)}" if wc is not None else "N/A")
+                lc2.metric("Số dòng (Line Count)", f"{int(lc)}" if lc is not None else "N/A")
+                lc3.metric("Tỷ lệ lặp (Repetition)", f"{rep:.3f}" if rep is not None else "N/A")
+
+                ch_desc = f"{int(ch)}" if ch is not None else "Không xác định (Dùng trung vị)"
+                awl_desc = f"{awl:.2f} ký tự" if awl is not None else "Không xác định"
+                pq_desc = f"{pq:.4f}" if pq is not None else "Không xác định"
+                st.caption(
+                    f"Độ dài từ TB: **{awl_desc}** | "
+                    f"Lần lặp điệp khúc: **{ch_desc}** | "
+                    f"Tỷ lệ dấu câu: **{pq_desc}**"
+                )
+        if cached_prediction is not None:
             with st.expander("Xem nguồn dữ liệu ca từ"):
+                st.caption(
+                    f"Trích xuất từ lời nhập: {extracted_count}/{len(provenance)} biến. "
+                    f"Dùng giá trị thay thế: {len(provenance) - extracted_count} biến."
+                )
                 st.table(pd.DataFrame.from_dict(provenance, orient="index").rename(
                     columns={"value": "Giá trị", "source": "Nguồn"}
                 ))
             render_prediction_feedback(st, "upload")
-        elif not pred_err:
-            st.info(f"💡 Bấm **Phân tích và dự đoán** ở cột bên trái để tính điểm tại **{market_label}**.")
-
-        with audio_details:
-            waveform = features.get("_waveform")
-            if waveform:
-                figure = go.Figure()
-                figure.add_scatter(x=waveform["time"], y=waveform["min"], line={"width": 0}, hoverinfo="skip")
-                figure.add_scatter(
-                    x=waveform["time"], y=waveform["max"], line={"width": 0},
-                    fill="tonexty", fillcolor="#367be8", hoverinfo="skip",
-                )
-                figure.update_layout(
-                    template="plotly_white", height=155, showlegend=False,
-                    xaxis_title="Thời gian (giây)", yaxis={"visible": False},
-                    margin={"l": 0, "r": 0, "t": 8, "b": 0},
-                )
-                st.plotly_chart(figure, key="upload_waveform", config={"displayModeBar": False})
-
-            duration = features.get("duration_analyzed_seconds", 0)
-            key_name = features.get("key", "N/A")
-            if est_duration is not None and est_duration > 360.0:
-                duration_desc = f"**{duration:.1f} giây** (trích đoạn 6 phút đầu từ tệp gốc {est_duration:.1f}s)"
-            else:
-                duration_desc = f"**{duration:.1f} giây**"
-
-            lat = features.get("_dsp_latency_sec", 0.0)
-            telemetry = f" | ⚡ Độ trễ DSP: **{lat:.2f}s**" if lat > 0 else ""
-
-            st.caption(
-                f"⏱️ Thời lượng giải mã: {duration_desc} | "
-                f"🎼 Điệu tính ước lượng: **{key_name}** {'Major 🎵' if float(features.get('mode', 1)) >= 0.5 else 'Minor 🎶'}"
-                f"{telemetry}"
-            )
-
-            st.subheader("📊 Tiêu Điểm Âm Học")
-            _render_highlight_metrics(features)
-
-            with st.expander("Xem 17 đặc trưng âm học"):
-                _render_feature_table(features)
-
-            st.markdown("---")
 
 
 # Alias to conform with team-wide naming conventions (e.g. render_tab_diagnostics)

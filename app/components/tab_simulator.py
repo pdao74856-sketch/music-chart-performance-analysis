@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from src.utils.pipeline_inference import DualModelPredictor
-from app.components.market_position import render_market_position
+from app.components.market_position import render_market_position, render_prediction_context
 from app.components.prediction_feedback import render_prediction_feedback
 
 
@@ -122,6 +122,13 @@ def render() -> None:
     inputs = st.session_state["simulator_inputs"]
     runs = st.session_state["simulator_runs"]
     results = {market: predictions for market, (predictions, _) in runs.items()}
+    has_rf_results = any("Random Forest Model 4" in scores for scores in results.values())
+    if has_rf_results:
+        st.info(
+            "**Cách đọc kết quả**  \n"
+            "Ví dụ, **Top ≈20%** nghĩa là điểm dự đoán nằm trong khoảng 20% cao nhất của mẫu tham chiếu. "
+            "Mỗi thị trường có mẫu tham chiếu riêng. Vạch xanh trên biểu đồ đánh dấu điểm mô phỏng."
+        )
     for market, column in zip(MARKETS, st.columns(3)):
         predictions, errors = runs[market]
         with column:
@@ -131,7 +138,8 @@ def render() -> None:
                 render_market_position(st, predictions["Random Forest Model 4"], market, f"simulator_{market}")
 
     st.session_state["simulator_raw_predictions"] = results
-    st.caption("Top X% là vị trí ước tính của điểm RF trong mẫu tham chiếu của từng thị trường. Vạch xanh đánh dấu điểm mô phỏng.")
+    if has_rf_results:
+        render_prediction_context(st)
     with st.expander("Xem điểm OLS, RF và đầu vào mô phỏng"):
         st.caption("Năm phát hành mô phỏng là 2024. Các đặc trưng ngoài phần điều chỉnh dùng trung vị tập huấn luyện.")
         st.table({market: {name: round(score, 2) for name, score in scores.items()} for market, scores in results.items()})
@@ -145,7 +153,7 @@ def render() -> None:
             f"Tỷ lệ lặp: {inputs['repetition_ratio']:.1%} · "
             f"Số từ: {inputs['word_count']:.0f}"
         )
-    if any("Random Forest Model 4" in scores for scores in results.values()):
+    if has_rf_results:
         render_prediction_feedback(st, "simulator")
 
 

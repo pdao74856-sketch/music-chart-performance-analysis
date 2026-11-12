@@ -302,6 +302,17 @@ def test_upload_submits_file_lyrics_and_market_together(monkeypatch):
     [(prediction, sources)] = app.session_state["tab3_predictions"].values()
     assert prediction["market"] == "US"
     assert sources["word_count"]["source"] == "Trích xuất từ ca từ"
+    result_tab = app.tabs[2]
+    element_types = [element.type for element in result_tab]
+    player_position = element_types.index("audio")
+    assert element_types[player_position + 1] == "plotly_chart"
+    panels = [panel.label for panel in result_tab.expander]
+    audio_position = panels.index("Xem 17 đặc trưng âm học")
+    lyrics_position = next(i for i, label in enumerate(panels) if "Lyrics NLP" in label)
+    assert audio_position < lyrics_position < panels.index("Xem nguồn dữ liệu ca từ")
+    assert panels[-1] == "Góp ý về cách hiển thị Top X%"
+    assert any("Cách đọc kết quả" in item.value and "Hoa Kỳ" in item.value for item in result_tab.info)
+    assert any("34/94 cặp (36,2%)" in item.value for item in result_tab.markdown)
     assert {"OLS", "Random Forest"} <= {metric.label for metric in app.tabs[2].metric}
 
     app.text_area(key="tab3_lyrics_input").set_value("")
