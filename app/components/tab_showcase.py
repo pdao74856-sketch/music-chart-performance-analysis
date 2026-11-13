@@ -429,6 +429,142 @@ def create_radar_chart(
     return fig
 
 
+@_cache_data
+def _load_market_reference_scores(market_code: str) -> np.ndarray:
+    """Nạp mảng điểm dự đoán RF của thị trường từ models/test_predictions.csv (cached)."""
+    if not TEST_PREDICTIONS_PATH.exists():
+        return np.array([])
+    df = pd.read_csv(TEST_PREDICTIONS_PATH, usecols=["market", "pred_rf"]).dropna()
+    sub = df[df["market"] == market_code]["pred_rf"].values
+    return sub
+
+
+def create_market_distribution_chart(
+    market_code: str, pred_score: float, track_title: str, top_percent: float
+) -> Optional[Any]:
+    """
+    Tạo biểu đồ phân phối mật độ (KDE Bell Curve) điểm dự đoán RF theo thị trường
+    và định vị vị trí của ca khúc hiện tại (chấm đỏ và vạch gióng).
+    """
+    try:
+        import plotly.graph_objects as go
+        from scipy.stats import gaussian_kde
+    except ImportError:
+        return None
+
+    scores = _load_market_reference_scores(market_code)
+    if len(scores) < 5:
+        return None
+
+    kde = gaussian_kde(scores)
+    x_min = min(float(scores.min()) - 4.0, pred_score - 4.0)
+    x_max = max(float(scores.max()) + 4.0, pred_score + 4.0)
+    x_vals = np.linspace(x_min, x_max, 250)
+    y_vals = kde(x_vals)
+
+    cur_y = float(kde(pred_score)[0])
+    med_val = float(np.median(scores))
+
+    fig = go.Figure()
+
+    # 1. Đường cong mật độ phân phối (Density Area)
+    fig.add_trace(
+        go.Scatter(
+            x=x_vals,
+            y=y_vals,
+            mode="lines",
+            line=dict(color="#3b82f6", width=2),
+            fill="tozeroy",
+            fillcolor="rgba(59, 130, 246, 0.12)",
+            name=f"Phân phối {market_code}",
+            hoverinfo="skip",
+        )
+    )
+
+    display_title = f"{track_title[:20]}..." if len(track_title) > 20 else track_title
+
+    # 2. Điểm định vị ca khúc hiện tại (Marker trên đỉnh đường cong)
+    fig.add_trace(
+        go.Scatter(
+            x=[pred_score],
+            y=[cur_y],
+            mode="markers",
+            marker=dict(color="#dc2626", size=9, line=dict(color="#ffffff", width=2)),
+            name=track_title,
+            hovertemplate=f"<b>{track_title}</b><br>Điểm RF: {pred_score:+.2f}<br>Vị thế: Top ≈{top_percent:.0f}% ({market_code})<extra></extra>",
+        )
+    )
+
+    # 3. Vạch gióng (Shapes) và Chú thích (Annotations)
+    shapes = [
+        # Vạch trung vị
+        dict(
+            type="line",
+            x0=float(med_val),
+            x1=float(med_val),
+            y0=0,
+            y1=1,
+            yref="paper",
+            line=dict(color="#94a3b8", width=1.5, dash="dash"),
+        ),
+        # Vạch ca khúc hiện tại
+        dict(
+            type="line",
+            x0=float(pred_score),
+            x1=float(pred_score),
+            y0=0,
+            y1=1,
+            yref="paper",
+            line=dict(color="#dc2626", width=2.5),
+        ),
+    ]
+
+    annotations = [
+        dict(
+            x=float(med_val),
+            y=0.95,
+            yref="paper",
+            text=f"Trung vị ({med_val:+.1f})",
+            showarrow=False,
+            xanchor="right" if pred_score > med_val else "left",
+            font=dict(size=10, color="#64748b"),
+        ),
+        dict(
+            x=float(pred_score),
+            y=1.0,
+            yref="paper",
+            text=f"📍 {display_title}: {pred_score:+.1f} (Top ≈{top_percent:.0f}%)",
+            showarrow=False,
+            xanchor="left" if pred_score <= med_val else "right",
+            font=dict(size=11, color="#dc2626"),
+        ),
+    ]
+
+    fig.update_layout(
+        template="plotly_white",
+        height=145,
+        margin=dict(l=15, r=15, t=25, b=25),
+        showlegend=False,
+        shapes=shapes,
+        annotations=annotations,
+        xaxis=dict(
+            title=dict(
+                text=f"Phân phối điểm dự đoán Random Forest tại {market_code} (N={len(scores)} bài test) — Chấm đỏ biểu diễn vị trí ca khúc",
+                font=dict(size=11, color="#475569"),
+            ),
+            showgrid=True,
+            gridcolor="#f1f5f9",
+            zeroline=True,
+            zerolinecolor="#cbd5e1",
+            fixedrange=True,
+        ),
+        yaxis=dict(visible=False, fixedrange=True),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
+
+
 # ==============================================================================
 # 4. STREAMLIT RENDER FUNCTION
 # ==============================================================================
@@ -555,10 +691,14 @@ def render() -> None:
         )
         st.caption(f"**{tier_desc}**")
 
-    st.progress(
-        min(1.0, max(0.0, acoustic_profile["percentile"] / 100.0)),
-        text=f"Tiến trình phân vị âm học tại {acoustic_profile['market_name']}: Top ≈{acoustic_profile['top_percent']:.0f}% (Percentile {acoustic_profile['percentile']:.1f}%)",
+    dist_fig = create_market_distribution_chart(
+        sel_row["market"],
+        pred_rf,
+        sel_row["title"],
+        acoustic_profile["top_percent"],
     )
+    if dist_fig is not None:
+        st.plotly_chart(dist_fig, use_container_width=True, config={"displayModeBar": False})
 
     # 5. Giao Diện Song Song: Radar Chart (Trái) & 3 Cột Kết Quả Đối Chiếu (Phải)
     col_chart, col_metrics = st.columns([3, 2])
