@@ -444,7 +444,7 @@ def create_market_distribution_chart(
 ) -> Optional[Any]:
     """
     Tạo biểu đồ phân phối mật độ (KDE Bell Curve) điểm dự đoán RF theo thị trường
-    và định vị vị trí của ca khúc hiện tại (chấm đỏ và vạch gióng).
+    với chấm đỏ nổi bật và khung badge chú thích không bị đè lên đường cong.
     """
     try:
         import plotly.graph_objects as go
@@ -464,6 +464,7 @@ def create_market_distribution_chart(
 
     cur_y = float(kde(pred_score)[0])
     med_val = float(np.median(scores))
+    max_y = float(np.max(y_vals))
 
     fig = go.Figure()
 
@@ -473,29 +474,15 @@ def create_market_distribution_chart(
             x=x_vals,
             y=y_vals,
             mode="lines",
-            line=dict(color="#3b82f6", width=2),
+            line=dict(color="#2563eb", width=2.5),
             fill="tozeroy",
-            fillcolor="rgba(59, 130, 246, 0.12)",
+            fillcolor="rgba(37, 99, 235, 0.12)",
             name=f"Phân phối {market_code}",
             hoverinfo="skip",
         )
     )
 
-    display_title = f"{track_title[:20]}..." if len(track_title) > 20 else track_title
-
-    # 2. Điểm định vị ca khúc hiện tại (Marker trên đỉnh đường cong)
-    fig.add_trace(
-        go.Scatter(
-            x=[pred_score],
-            y=[cur_y],
-            mode="markers",
-            marker=dict(color="#dc2626", size=9, line=dict(color="#ffffff", width=2)),
-            name=track_title,
-            hovertemplate=f"<b>{track_title}</b><br>Điểm RF: {pred_score:+.2f}<br>Vị thế: Top ≈{top_percent:.0f}% ({market_code})<extra></extra>",
-        )
-    )
-
-    # 3. Vạch gióng (Shapes) và Chú thích (Annotations)
+    # 2. Vạch gióng đứng dừng đúng tại chấm đỏ (không cắt qua chữ)
     shapes = [
         # Vạch trung vị
         dict(
@@ -503,53 +490,80 @@ def create_market_distribution_chart(
             x0=float(med_val),
             x1=float(med_val),
             y0=0,
-            y1=1,
-            yref="paper",
+            y1=max_y * 1.15,
+            yref="y",
             line=dict(color="#94a3b8", width=1.5, dash="dash"),
         ),
-        # Vạch ca khúc hiện tại
+        # Vạch đỏ nối từ trục hoành lên chấm đỏ
         dict(
             type="line",
             x0=float(pred_score),
             x1=float(pred_score),
             y0=0,
-            y1=1,
-            yref="paper",
-            line=dict(color="#dc2626", width=2.5),
+            y1=cur_y,
+            yref="y",
+            line=dict(color="#dc2626", width=2),
         ),
     ]
 
+    # 3. Chấm đỏ nổi bật trên đỉnh đường cong (size 12, viền trắng sắc nét)
+    fig.add_trace(
+        go.Scatter(
+            x=[pred_score],
+            y=[cur_y],
+            mode="markers",
+            marker=dict(color="#dc2626", size=12, line=dict(color="#ffffff", width=2.5)),
+            name=track_title,
+            hovertemplate=f"<b>{track_title}</b><br>Điểm RF: {pred_score:+.2f}<br>Vị thế: Top ≈{top_percent:.0f}% ({market_code})<extra></extra>",
+        )
+    )
+
+    display_title = f"{track_title[:24]}..." if len(track_title) > 24 else track_title
+
+    # 4. Chú thích dạng Badge có nền trắng, viền đỏ và mũi tên chỉ xuống (chống đè 100%)
     annotations = [
         dict(
             x=float(med_val),
-            y=0.95,
-            yref="paper",
-            text=f"Trung vị ({med_val:+.1f})",
+            y=max_y * 1.18,
+            yref="y",
+            text=f"Trung vị: {med_val:+.1f}",
             showarrow=False,
-            xanchor="right" if pred_score > med_val else "left",
+            xanchor="center",
             font=dict(size=10, color="#64748b"),
+            bgcolor="rgba(255, 255, 255, 0.85)",
+            borderpad=2,
         ),
         dict(
             x=float(pred_score),
-            y=1.0,
-            yref="paper",
-            text=f"📍 {display_title}: {pred_score:+.1f} (Top ≈{top_percent:.0f}%)",
-            showarrow=False,
-            xanchor="left" if pred_score <= med_val else "right",
-            font=dict(size=11, color="#dc2626"),
+            y=cur_y,
+            yref="y",
+            text=f" 📍 <b>{display_title}</b>: {pred_score:+.1f} pts (<b>Top ≈{top_percent:.0f}%</b>) ",
+            showarrow=True,
+            arrowhead=2,
+            arrowsize=1,
+            arrowwidth=1.5,
+            arrowcolor="#dc2626",
+            ax=0,
+            ay=-36,  # Bay lên 36px phía trên chấm đỏ
+            font=dict(size=11, color="#991b1b"),
+            bgcolor="#ffffff",
+            bordercolor="#dc2626",
+            borderwidth=1.5,
+            borderpad=4,
+            opacity=0.98,
         ),
     ]
 
     fig.update_layout(
         template="plotly_white",
-        height=145,
-        margin=dict(l=15, r=15, t=25, b=25),
+        height=175,
+        margin=dict(l=20, r=20, t=35, b=25),
         showlegend=False,
         shapes=shapes,
         annotations=annotations,
         xaxis=dict(
             title=dict(
-                text=f"Phân phối điểm dự đoán Random Forest tại {market_code} (N={len(scores)} bài test) — Chấm đỏ biểu diễn vị trí ca khúc",
+                text=f"Phân phối điểm dự đoán Random Forest tại {market_code} (N={len(scores)} bài test tham chiếu) — Trục điểm ChartScore",
                 font=dict(size=11, color="#475569"),
             ),
             showgrid=True,
@@ -558,7 +572,11 @@ def create_market_distribution_chart(
             zerolinecolor="#cbd5e1",
             fixedrange=True,
         ),
-        yaxis=dict(visible=False, fixedrange=True),
+        yaxis=dict(
+            visible=False,
+            fixedrange=True,
+            range=[0, max_y * 1.55],  # Dành 55% không gian phía trên để chứa badge và mũi tên
+        ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
     )
